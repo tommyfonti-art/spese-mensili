@@ -1,0 +1,519 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Spese del mese</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
+:root{
+  --bg:#EFEFEF; --surface:#FFFFFF; --ink:#161616; --muted:#5F6266; --line:#D6D6D8;
+  --conto:#0F4C5C; --conto-ink:#FFFFFF; --conto-soft:#DAEAEC; --conto-text:#0F4C5C;
+  --cont:#F2D9A0; --cont-ink:#3B2A05; --cont-soft:#F7EAC9; --cont-text:#7A4E00;
+  --primary:var(--conto); --primary-ink:var(--conto-ink);
+  --danger:#A32626; --focus:#1B7FBF;
+  --debt:#B3261E; --debt-ink:#FFFFFF; --debt-soft:#FBE3E1; --debt-text:#8C1C15;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141414; --surface:#1F1F1F; --ink:#ECECEC; --muted:#A0A3A7; --line:#34363A;
+    --conto:#1F6E82; --conto-ink:#FFFFFF; --conto-soft:#1B3A42; --conto-text:#8FD0DE;
+    --cont:#5A4514; --cont-ink:#FBEFD2; --cont-soft:#3D3116; --cont-text:#EBBE68;
+    --danger:#F08A8A; --focus:#6BB8E8;
+    --debt:#B4332B; --debt-ink:#FFFFFF; --debt-soft:#3A1A18; --debt-text:#F4A29B;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141414; --surface:#1F1F1F; --ink:#ECECEC; --muted:#A0A3A7; --line:#34363A;
+  --conto:#1F6E82; --conto-ink:#FFFFFF; --conto-soft:#1B3A42; --conto-text:#8FD0DE;
+  --cont:#5A4514; --cont-ink:#FBEFD2; --cont-soft:#3D3116; --cont-text:#EBBE68;
+  --danger:#F08A8A; --focus:#6BB8E8;
+    --debt:#B4332B; --debt-ink:#FFFFFF; --debt-soft:#3A1A18; --debt-text:#F4A29B;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4}
+#app{max-width:560px;margin:0 auto;padding:16px 16px 40px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 16px}
+.month{font-family:var(--display);font-weight:700;font-size:clamp(24px,7vw,32px);letter-spacing:-.01em;text-align:center;margin:0}
+.mid{flex:1;text-align:center}
+.sub{margin:2px 0 0;font-size:14px;color:var(--muted)}
+.yr-btn{background:none;border:0;color:var(--conto-text);font-weight:600;font-size:13px;padding:8px 6px;min-height:40px}
+.yr-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.yr-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-height:44px}
+.yr-row.cur{border-color:var(--conto);border-width:2px}
+.yr-row .yn{display:flex;flex-direction:column}
+.yr-row .yn b{font-family:var(--display);font-weight:700;font-size:16px}
+.yr-row .yn span{font-size:12px;color:var(--muted)}
+.yr-row .ya{font-family:var(--display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.nav{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:22px;line-height:1;display:grid;place-items:center}
+
+.debts{margin:0 0 12px}
+.debt-bar{width:100%;display:flex;align-items:center;gap:10px;border:0;border-radius:12px;padding:8px 14px;background:var(--debt);color:var(--debt-ink);text-align:left;min-height:40px}
+.debt-bar .dl{font-weight:700;font-size:14px;white-space:nowrap}
+.debt-bar .dn2{flex:1;min-width:0;font-size:14px;opacity:.92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.debt-bar .dt{font-family:var(--display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.debt-bar .chev{font-size:13px}
+.debt-panel{margin-top:6px;background:var(--surface);border:2px solid var(--debt);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.debt-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--debt-soft);color:var(--debt-text);border:0;border-radius:10px;padding:12px}
+.debt-row .n{font-weight:600;overflow-wrap:anywhere}
+.debt-row .a{font-family:var(--display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.debt-note{margin:0;padding:4px 4px 0;font-size:13px;color:var(--muted)}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tot{display:block;width:100%;border:0;text-align:left;border-radius:20px;padding:16px}
+.tot.conto{background:var(--conto);color:var(--conto-ink)}
+.tot.cont{background:var(--cont);color:var(--cont-ink)}
+.tot .lbl{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;margin:0 0 6px;opacity:.9}
+.tot .plus{width:26px;height:26px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-items:center;font-size:18px;line-height:1}
+.tot .val{display:block;font-family:var(--display);font-weight:700;font-size:clamp(22px,6.4vw,30px);letter-spacing:-.02em;margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tot .cnt{display:block;font-size:13px;margin:6px 0 0;opacity:.85}
+.sum{display:flex;justify-content:space-between;align-items:baseline;padding:14px 6px 6px;color:var(--muted);font-size:15px}
+.sum strong{font-family:var(--display);font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+
+.list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{width:100%;display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px 4px 5px}
+.day{width:36px;height:32px;border-radius:7px;overflow:hidden;display:flex;flex-direction:column;border:1.5px solid var(--line)}
+.day .dm{font-size:9px;font-weight:700;line-height:1;text-align:center;padding:2px 0 1px}
+.day .dn{flex:1;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.day.conto{border-color:var(--conto)}
+.day.conto .dm{background:var(--conto);color:var(--conto-ink)}
+.day.conto .dn{background:var(--conto-soft);color:var(--conto-text)}
+.day.cont{border-color:var(--cont)}
+.day.cont .dm{background:var(--cont);color:var(--cont-ink)}
+.day.cont .dn{background:var(--cont-soft);color:var(--cont-text)}
+.name{font-weight:600;font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.meta{font-size:11px;line-height:1.1;color:var(--muted);margin-top:0}
+.tag{font-weight:600}
+.tag.conto{color:var(--conto-text)}
+.tag.cont{color:var(--cont-text)}
+.amt{font-family:var(--display);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:20px;margin-top:12px;color:var(--muted)}
+.empty p{margin:0 0 12px}
+
+.btn{border-radius:14px;border:1px solid var(--line);background:var(--surface);padding:12px 16px;font-weight:600;min-height:48px}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.btn.danger{color:var(--danger)}
+.btn.wide{width:100%}
+.more{display:flex;justify-content:center;margin-top:8px}
+.quiet{background:none;border:0;color:var(--muted);font-weight:600;font-size:15px;padding:12px 16px;min-height:44px;text-decoration:underline;text-underline-offset:3px}
+
+.form{background:var(--surface);border:2px solid var(--primary);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.form label,.form legend{font-size:14px;font-weight:600;color:var(--muted)}
+.form input[type=text]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+fieldset{border:0;margin:0;padding:0}
+.segs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.seg{position:relative;display:block}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;width:100%;height:100%;cursor:pointer}
+.seg span{display:block;text-align:center;padding:11px 8px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:15px}
+.seg input:checked + span{background:var(--conto);border-color:var(--conto);color:var(--conto-ink)}
+.seg.c input:checked + span{background:var(--cont);border-color:var(--cont);color:var(--cont-ink)}
+.seg input:focus-visible + span{outline:3px solid var(--focus);outline-offset:2px}
+.err{margin:0;color:var(--danger);font-size:14px;font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions .primary{flex:1}
+.status{margin-top:12px;font-size:13px;color:var(--muted);text-align:center;min-height:18px}
+</style></head><body><div id="app"></div><script id="dati-iniziali" type="application/json">{"items":[{"id":"mub6sxaakiih","m":"2026-09","name":"Iphone","amt":60,"day":5,"pay":"conto"},{"id":"mub71x5wfya4","m":"2026-09","name":"Pranzo passatore","amt":50,"day":5,"pay":"conto"},{"id":"mub7ijipwog7","m":"2026-10","name":"Directa","amt":500,"day":13,"pay":"conto"},{"id":"mub7pitjtxyh","m":"2026-10","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mub7qjfn2tcf","m":"2026-10","name":"Bici","amt":280,"day":21,"pay":"conto"},{"id":"mub7upo31f7y","m":"2026-11","name":"Directa","amt":500,"day":13,"pay":"conto"},{"id":"mub7upo339qg","m":"2026-11","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mub7upo36q1h","m":"2026-11","name":"Bici","amt":280,"day":21,"pay":"conto"},{"id":"mubcan8dcaj5","m":"2026-10","name":"Meccanico","amt":200,"day":11,"pay":"contanti"},{"id":"mubce6kfjsc9","m":"2026-11","name":"Meccanico","amt":200,"day":11,"pay":"contanti"},{"id":"mubcfyfhp7ti","m":"2026-11","name":"Regalo Carra","amt":100,"day":12,"pay":"contanti"},{"id":"mubch0813f8t","m":"2026-12","name":"Meccanico","amt":163,"day":11,"pay":"contanti"},{"id":"mubch9xybg49","m":"2026-12","name":"Directa","amt":500,"day":13,"pay":"conto"},{"id":"mubchmk4mkn1","m":"2026-12","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubcibotr81m","m":"2026-12","name":"Regali","amt":300,"day":15,"pay":"contanti"},{"id":"mubck1cg2ry7","m":"2027-01","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubck1cg01co","m":"2027-01","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubclzrx6pau","m":"2027-03","name":"Assicurazione","amt":600,"day":11,"pay":"conto"},{"id":"mubcn5hqkh5n","m":"2027-01","name":"Regalo Giuli","amt":150,"day":15,"pay":"contanti"},{"id":"mubcqapta39f","m":"2027-02","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubcqapt49dm","m":"2027-02","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubcqxjgioau","m":"2027-03","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubcqxjgfqeu","m":"2027-03","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubcr2o7re4n","m":"2027-04","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubcr2o7dmbv","m":"2027-04","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mugpiifc4jes","m":"2026-10","name":"Coaching","amt":170,"day":25,"pay":"conto"},{"id":"mugpitpftzkq","m":"2026-11","name":"Coaching","amt":170,"day":25,"pay":"conto"},{"id":"mugq8q9jyl0b","m":"2026-10","name":"Ecografia","amt":35,"day":13,"pay":"conto"},{"id":"mugsr9c4zi9x","m":"2026-10","name":"Fisio","amt":40,"day":15,"pay":"contanti"},{"id":"muhl0402p5d1","m":"2026-09","name":"Telepass","amt":220,"day":1,"pay":"conto"},{"id":"muhl2k8fpsv6","m":"2026-10","name":"Psy","amt":60,"day":20,"pay":"contanti"},{"id":"mujk2om81x4u","m":"2026-10","name":"Telepass","amt":0.01,"day":1,"pay":"conto"}],"debts":[{"id":"mub8928a7gbd","name":"Meccanico","amt":563}],"salaries":{"2026-09":2350}}</script><script id="main">
+(function(){
+  var app = document.getElementById('app');
+  var state = { items: [], debts: [], salaries: {} };
+
+  var MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var MESI3 = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+  var START = 11; // il "mese" va dall'11 al 10 del mese dopo
+  var eurFmt = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+  function eur(n){ return eurFmt.format(n); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function key(y, m){ return y + '-' + String(m + 1).padStart(2, '0'); }
+  function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  var now = new Date();
+  var cur = null;
+  try { cur = sessionStorage.getItem('mese'); } catch(e) {}
+  function periodOf(d){ var y = d.getFullYear(), m = d.getMonth(); if (d.getDate() < START) { m--; if (m < 0) { m = 11; y--; } } return key(y, m); }
+  if (!/^\d{4}-\d{2}$/.test(cur || '')) cur = periodOf(now);
+
+  var view = 'month'; // month | year
+  var newPay = 'conto';
+  var debtOpen = false;
+  var debtEditing = null;  // null | 'new' | id
+  var debtError = '';
+  var armedDebt = false;
+  var editing = null;      // null | 'new' | id
+  var armedDelete = false;
+  var formError = '';
+  var saveState = 'idle';  // idle | pending | error
+
+  function setMonth(k){
+    cur = k; editing = null; armedDelete = false; formError = '';
+    try { sessionStorage.setItem('mese', cur); } catch(e) {}
+    render();
+  }
+  function shift(k, d){
+    var p = k.split('-'), y = +p[0], m = +p[1] - 1 + d;
+    y += Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+    return key(y, m);
+  }
+  function label(k){ var p = k.split('-'); return MESI[+p[1] - 1] + ' ' + p[0]; }
+  function range(k){ var m = +k.split('-')[1] - 1; return START + ' ' + MESI3[m] + ' – ' + (START - 1) + ' ' + MESI3[(m + 1) % 12]; }
+  function ord(day){ return day >= START ? day : day + 31; }
+  function realMonth(k, day){ var m = +k.split('-')[1] - 1; return day >= START ? m : (m + 1) % 12; }
+
+  function itemsOf(k){
+    return state.items.filter(function(i){ return i.m === k; })
+      .sort(function(a, b){ return (ord(a.day) - ord(b.day)) || a.name.localeCompare(b.name, 'it'); });
+  }
+  function candidates(){
+    var names = {};
+    itemsOf(cur).forEach(function(i){ names[i.name.toLowerCase()] = 1; });
+    return itemsOf(shift(cur, -1)).filter(function(i){ return !names[i.name.toLowerCase()]; });
+  }
+
+  function parseAmount(v){
+    var s = String(v).replace(/\s|€/g, '');
+    if (!s) return NaN;
+    if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    var n = parseFloat(s);
+    return isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+  }
+
+  function formHtml(it){
+    var isNew = !it.id;
+    return '<form class="form" data-form novalidate>' +
+      '<label>Nome<input type="text" name="name" autocomplete="off" placeholder="es. Mutuo" value="' + esc(it.name || '') + '"></label>' +
+      '<div class="two">' +
+        '<label>Importo (€)<input type="text" name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="' + (it.amt ? esc(String(it.amt).replace('.', ',')) : '') + '"></label>' +
+        '<label>Giorno di scadenza<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(it.day || '') + '"></label>' +
+      '</div>' +
+      '<fieldset><legend>Come si paga</legend><div class="segs">' +
+        '<label class="seg"><input type="radio" name="pay" value="conto"' + (it.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
+        '<label class="seg c"><input type="radio" name="pay" value="contanti"' + (it.pay === 'contanti' ? ' checked' : '') + '><span>Contanti</span></label>' +
+      '</div></fieldset>' +
+      (formError ? '<p class="err" role="alert">' + esc(formError) + '</p>' : '') +
+      '<div class="actions">' +
+        '<button type="submit" class="btn primary">Salva</button>' +
+        '<button type="button" class="btn" data-act="cancel">Annulla</button>' +
+        (isNew ? '' : '<button type="button" class="btn danger" data-act="delete">Elimina</button>') +
+      '</div></form>';
+  }
+
+  function debtForm(d){
+    return '<form class="form" data-debt-form novalidate>' +
+      '<label>A chi devi dare i soldi<input type="text" name="name" autocomplete="off" placeholder="es. Meccanico" value="' + esc(d.name || '') + '"></label>' +
+      '<label>Quanto devi ancora dare (€)<input type="text" name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="' + (d.amt ? esc(String(d.amt).replace('.', ',')) : '') + '"></label>' +
+      (debtError ? '<p class="err" role="alert">' + esc(debtError) + '</p>' : '') +
+      '<div class="actions"><button type="submit" class="btn primary">Salva</button>' +
+      '<button type="button" class="btn" data-act="debt-cancel">Annulla</button>' +
+      (d.id ? '<button type="button" class="btn danger" data-act="debt-done">' + (armedDebt ? 'Sicuro? Tocca ancora' : 'Saldato, toglilo') + '</button>' : '') +
+      '</div></form>';
+  }
+  function debtHtml(){
+    var ds = state.debts, total = 0;
+    ds.forEach(function(d){ total += d.amt; });
+    var line = !ds.length ? 'Nessun debito segnato' : (ds.length === 1 ? ds[0].name : ds.length + ' debiti');
+    var h = '<div class="debts"><button class="debt-bar" data-act="debt-toggle" aria-expanded="' + (debtOpen ? 'true' : 'false') + '">' +
+      '<span class="dl">Debiti</span><span class="dn2">' + esc(line) + '</span>' +
+      '<span class="dt">' + (ds.length ? eur(total) : '') + '</span><span class="chev" aria-hidden="true">' + (debtOpen ? '▲' : '▼') + '</span></button>';
+    if (debtOpen) {
+      h += '<div class="debt-panel">';
+      ds.forEach(function(d){
+        if (debtEditing === d.id) { h += debtForm(d); return; }
+        h += '<button class="debt-row" data-act="debt-edit" data-id="' + esc(d.id) + '"><span class="n">' + esc(d.name) + '</span><span class="a">' + eur(d.amt) + '</span></button>';
+      });
+      if (debtEditing === 'new') h += debtForm({});
+      else h += '<button class="btn wide" data-act="debt-add">Aggiungi debito</button>';
+      if (ds.length && debtEditing !== 'new') h += '<p class="debt-note">Se ne paghi solo una parte, tocca il debito e scrivi quanto ti resta.</p>';
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+
+  function yearRows(){
+    var h = '';
+    for (var i = 0; i < 12; i++) {
+      var k = i === 0 ? cur : shift(cur, i);
+      var tot = 0;
+      itemsOf(k).forEach(function(it){ tot += it.amt; });
+      h += '<li><button class="yr-row' + (k === cur ? ' cur' : '') + '" data-act="yr-pick" data-k="' + esc(k) + '">' +
+        '<span class="yn"><b>' + esc(label(k)) + '</b><span>' + esc(range(k)) + '</span></span>' +
+        '<span class="ya">' + eur(tot) + '</span></button></li>';
+    }
+    return h;
+  }
+
+  function render(){
+    if (view === 'year') {
+      var h2 = '<header class="top">' +
+        '<div class="mid"><h1 class="month">Prossimi 12 mesi</h1><p class="sub">Quanto hai già segnato per ognuno</p></div>' +
+        '</header>' +
+        '<button class="yr-btn" data-act="view-month">‹ Torna al mese</button>' +
+        '<ul class="yr-list">' + yearRows() + '</ul>';
+      app.innerHTML = h2;
+      return;
+    }
+    var items = itemsOf(cur);
+    var conto = 0, cont = 0, nConto = 0, nCont = 0;
+    items.forEach(function(i){
+      if (i.pay === 'contanti') { cont += i.amt; nCont++; } else { conto += i.amt; nConto++; }
+    });
+    var h = '';
+    h += '<header class="top">' +
+      '<button class="nav" data-act="prev" aria-label="Mese precedente">‹</button>' +
+      '<div class="mid"><h1 class="month">' + esc(label(cur)) + '</h1><p class="sub">' + esc(range(cur)) + '</p></div>' +
+      '<button class="nav" data-act="next" aria-label="Mese successivo">›</button></header>' +
+      '<div style="text-align:center"><button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
+
+    h += debtHtml();
+    h += '<section class="totals" aria-label="Totali del mese">' +
+      '<button class="tot conto" data-act="add" data-pay="conto" aria-label="Aggiungi una spesa in banca"><span class="lbl">Banca<span class="plus" aria-hidden="true">+</span></span><span class="val">' + eur(conto) + '</span><span class="cnt">' + nConto + (nConto === 1 ? ' addebito' : ' addebiti') + '</span></button>' +
+      '<button class="tot cont" data-act="add" data-pay="contanti" aria-label="Aggiungi una spesa in contanti"><span class="lbl">In contanti<span class="plus" aria-hidden="true">+</span></span><span class="val">' + eur(cont) + '</span><span class="cnt">' + nCont + (nCont === 1 ? ' spesa' : ' spese') + '</span></button>' +
+      '</section>';
+    h += '<div class="sum"><span>Totale del mese</span><strong>' + eur(conto + cont) + '</strong></div>';
+
+    if (!items.length && editing !== 'new') {
+      var cand = candidates().length;
+      h += '<div class="empty"><p>Nessuna spesa per ' + esc(label(cur)) + ' (' + esc(range(cur)) + '). Tocca "Banca" o "In contanti" per aggiungerne una.</p>' +
+        (cand ? '<button class="btn wide" data-act="copy">Copia le ' + cand + ' del mese scorso</button>' : '') + '</div>';
+    } else {
+      h += '<ul class="list">';
+            items.forEach(function(i){
+        var isCont = i.pay === 'contanti';
+        if (editing === i.id) { h += '<li>' + formHtml(i) + '</li>'; return; }
+        h += '<li><button class="row" data-act="edit" data-id="' + esc(i.id) + '">' +
+          '<span class="day ' + (isCont ? 'cont' : 'conto') + '" aria-label="Giorno ' + i.day + ' ' + MESI3[realMonth(cur, i.day)] + '"><span class="dm">' + MESI3[realMonth(cur, i.day)] + '</span><span class="dn">' + i.day + '</span></span>' +
+          '<span><span class="name">' + esc(i.name) + '</span><span class="meta" style="display:block"><span class="tag ' + (isCont ? 'cont' : 'conto') + '">' + (isCont ? 'Contanti' : 'Banca') + '</span></span></span>' +
+          '<span class="amt">' + eur(i.amt) + '</span></button></li>';
+      });
+      if (editing === 'new') {
+                h += '<li>' + formHtml({ day: '', pay: newPay }) + '</li>';
+      }
+      h += '</ul>';
+    }
+
+    if (editing !== 'new' && items.length && candidates().length) {
+      h += '<div class="more"><button class="quiet" data-act="copy">Copia dal mese scorso (' + candidates().length + ')</button></div>';
+    }
+
+    var msg = '';
+    if (saveState === 'pending') msg = 'Salvataggio…';
+    else if (saveState === 'error') msg = 'Non riesco a salvare: controlla la connessione.';
+    h += '<p class="status" role="status">' + esc(msg) + '</p>';
+
+    app.innerHTML = h;
+    var f = app.querySelector('[data-form] input[name=name], [data-debt-form] input[name=name]');
+    if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); }
+  }
+
+  // ---- salvataggio: Firestore via REST (stesso database di "La nostra spesa" e "Registro Ore") ----
+  var firebaseConfig = {
+    apiKey: "AIzaSyBf_L7I710y1uCfqexrRS2A7fa1AIeQdPM",
+    authDomain: "spesa-b6ed3.firebaseapp.com",
+    projectId: "spesa-b6ed3",
+    storageBucket: "spesa-b6ed3.firebasestorage.app",
+    messagingSenderId: "85578996832",
+    appId: "1:85578996832:web:97e9f2926410e13cda3705"
+  };
+  var PROJECT_ID = firebaseConfig.projectId;
+  var API_KEY = firebaseConfig.apiKey;
+  var API_BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';
+  var DOC_PATH = '/spese/dati';
+  var seeded = false;
+
+  function fsFetch(path, opts, ms){
+    opts = opts || {};
+    var sep = path.indexOf('?') > -1 ? '&' : '?';
+    var url = API_BASE + path + sep + 'key=' + API_KEY;
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, ms || 12000);
+    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+      .then(function(res){
+        clearTimeout(timer);
+        if(!res.ok){
+          if(res.status === 404){ var e404 = new Error('not-found'); e404.code = 'not-found'; throw e404; }
+          if(res.status === 403){ var e403 = new Error('permission-denied'); e403.code = 'permission-denied'; throw e403; }
+          if(res.status === 429){ var e429 = new Error('resource-exhausted'); e429.code = 'resource-exhausted'; throw e429; }
+          var eOther = new Error('http-'+res.status); eOther.code = 'error'; throw eOther;
+        }
+        return res.status === 204 ? null : res.json();
+      })
+      .catch(function(err){
+        clearTimeout(timer);
+        if(err && err.code) throw err;
+        if(err && err.name === 'AbortError'){ var eT = new Error('timeout'); eT.code = 'timeout'; throw eT; }
+        var eN = new Error('network'); eN.code = 'network'; throw eN;
+      });
+  }
+
+  var pubTimer = null;
+  var pendingSave = false;
+  function schedule(){
+    pendingSave = true;
+    saveState = 'pending';
+    clearTimeout(pubTimer);
+    pubTimer = setTimeout(flush, 1400);
+  }
+  function flush(){
+    clearTimeout(pubTimer);
+    pubTimer = null;
+    if (editing || debtEditing) { pubTimer = setTimeout(flush, 1400); return; }
+    if(!pendingSave) return;
+    pendingSave = false;
+    var payload = { fields: { json: { stringValue: JSON.stringify(state) } } };
+    fsFetch(DOC_PATH + '?updateMask.fieldPaths=json', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }, 12000).then(function(){
+      saveState = 'idle';
+      render();
+    }).catch(function(){
+      saveState = 'error';
+      pendingSave = true;
+      render();
+    });
+  }
+
+  function caricaRemoto(){
+    fsFetch(DOC_PATH, {}, 12000).then(function(doc){
+      var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
+      if(raw){
+        try{
+          var parsed = JSON.parse(raw);
+          if(parsed && typeof parsed === 'object' && Array.isArray(parsed.items)){
+            if (!Array.isArray(parsed.debts)) parsed.debts = [];
+            if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
+            state = parsed;
+            render();
+          }
+        }catch(e){ /* ignore */ }
+      }
+    }).catch(function(err){
+      if(err && err.code === 'not-found'){
+        if(!seeded && state.items.length === 0){
+          var iniz = document.getElementById('dati-iniziali');
+          if(iniz && iniz.textContent){
+            try{
+              var parsedIniz = JSON.parse(iniz.textContent);
+              if(parsedIniz && typeof parsedIniz === 'object' && Array.isArray(parsedIniz.items)){
+                state = parsedIniz;
+                if (!Array.isArray(state.debts)) state.debts = [];
+                if (!state.salaries || typeof state.salaries !== 'object') state.salaries = {};
+                render();
+                seeded = true;
+                schedule();
+              }
+            }catch(e){ /* ignore */ }
+          }
+        }
+        return;
+      }
+      if (saveState === 'idle') { saveState = 'error'; render(); }
+    });
+  }
+
+  var pollTimer = null;
+  function initStorage(){
+    render();
+    caricaRemoto();
+    pollTimer = setInterval(function(){
+      if (pendingSave || saveState === 'pending') return;
+      if (editing || debtEditing) return;
+      caricaRemoto();
+    }, 6000);
+  }
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) flush();
+  });
+  window.addEventListener('pagehide', function(){ flush(); });
+  window.addEventListener('blur', function(){ flush(); });
+
+  // ---- interazioni ----
+  app.addEventListener('click', function(ev){
+    var t = ev.target.closest('[data-act]');
+    if (!t) return;
+    var act = t.getAttribute('data-act');
+    if (act === 'view-year') { view = 'year'; render(); return; }
+    if (act === 'view-month') { view = 'month'; render(); return; }
+    if (act === 'yr-pick') { cur = t.getAttribute('data-k'); try { sessionStorage.setItem('mese', cur); } catch(e) {} view = 'month'; render(); return; }
+    if (act === 'debt-toggle') {
+      debtOpen = !debtOpen; if (!debtOpen) { debtEditing = null; armedDebt = false; debtError = ''; }
+      render();
+    }
+    else if (act === 'debt-add') { debtEditing = 'new'; debtError = ''; armedDebt = false; render(); }
+    else if (act === 'debt-edit') { debtEditing = t.getAttribute('data-id'); debtError = ''; armedDebt = false; render(); }
+    else if (act === 'debt-cancel') { debtEditing = null; debtError = ''; armedDebt = false; render(); }
+    else if (act === 'debt-done') {
+      if (!armedDebt) { armedDebt = true; render(); return; }
+      state.debts = state.debts.filter(function(d){ return d.id !== debtEditing; });
+      debtEditing = null; armedDebt = false; debtOpen = false; schedule(); render();
+    }
+    else if (act === 'prev') setMonth(shift(cur, -1));
+    else if (act === 'next') setMonth(shift(cur, 1));
+    else if (act === 'add') { newPay = t.getAttribute('data-pay') === 'contanti' ? 'contanti' : 'conto'; editing = 'new'; formError = ''; armedDelete = false; render(); }
+    else if (act === 'edit') { editing = t.getAttribute('data-id'); formError = ''; armedDelete = false; render(); }
+    else if (act === 'cancel') { editing = null; formError = ''; armedDelete = false; render(); }
+    else if (act === 'copy') {
+      candidates().forEach(function(i){ state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
+      schedule(); render();
+    }
+    else if (act === 'delete') {
+      state.items = state.items.filter(function(i){ return i.id !== editing; });
+      editing = null; armedDelete = false; schedule(); render();
+    }
+  });
+
+  app.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    if (ev.target.hasAttribute('data-debt-form')) {
+      var fd = ev.target;
+      var dn = fd.elements.name.value.trim(), rawA = fd.elements.amt.value, da = parseAmount(rawA);
+      if (!dn) debtError = 'Scrivi a chi devi dare i soldi.';
+      else if (!(da > 0)) debtError = 'Scrivi quanto devi ancora dare, ad esempio 300.';
+      else debtError = '';
+      if (debtError) {
+        render();
+        var f2 = app.querySelector('[data-debt-form]');
+        if (f2) { f2.elements.name.value = dn; f2.elements.amt.value = rawA; }
+        return;
+      }
+      if (debtEditing === 'new') state.debts.push({ id: newId(), name: dn, amt: da });
+      else state.debts.forEach(function(d){ if (d.id === debtEditing) { d.name = dn; d.amt = da; } });
+      debtEditing = null; armedDebt = false; debtOpen = false; schedule(); render();
+      return;
+    }
+    var f = ev.target;
+    var name = f.elements.name.value.trim();
+    var amt = parseAmount(f.elements.amt.value);
+    var day = parseInt(f.elements.day.value, 10);
+    var pay = f.elements.pay.value === 'contanti' ? 'contanti' : 'conto';
+    if (!name) formError = 'Scrivi il nome della spesa.';
+    else if (!(amt > 0)) formError = 'Scrivi un importo, ad esempio 450,00.';
+    else if (!(day >= 1 && day <= 31)) formError = 'Il giorno deve essere tra 1 e 31.';
+    else formError = '';
+    if (formError) {
+      var rawAmt = f.elements.amt.value, rawDay = f.elements.day.value;
+      render();
+      var ff = app.querySelector('[data-form]');
+      if (ff) {
+        ff.elements.name.value = name; ff.elements.amt.value = rawAmt; ff.elements.day.value = rawDay;
+        ff.querySelector('input[value=' + pay + ']').checked = true;
+      }
+      return;
+    }
+    if (editing === 'new') {
+      state.items.push({ id: newId(), m: cur, name: name, amt: amt, day: day, pay: pay });
+    } else {
+      state.items.forEach(function(i){ if (i.id === editing) { i.name = name; i.amt = amt; i.day = day; i.pay = pay; } });
+    }
+    editing = null; armedDelete = false;
+    schedule(); render();
+  });
+
+  initStorage();
+})();
+</script></body></html>
