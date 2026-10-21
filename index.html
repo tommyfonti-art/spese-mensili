@@ -309,19 +309,23 @@ fieldset{border:0;margin:0;padding:0}
     if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); }
   }
 
-  // ---- salvataggio: Firestore via REST (stesso database di "La nostra spesa" e "Registro Ore") ----
+  // ---- salvataggio: Firestore via REST (progetto dedicato spese-mensili) ----
   var firebaseConfig = {
-    apiKey: "AIzaSyBf_L7I710y1uCfqexrRS2A7fa1AIeQdPM",
-    authDomain: "spesa-b6ed3.firebaseapp.com",
-    projectId: "spesa-b6ed3",
-    storageBucket: "spesa-b6ed3.firebasestorage.app",
-    messagingSenderId: "85578996832",
-    appId: "1:85578996832:web:97e9f2926410e13cda3705"
+    apiKey: "AIzaSyAKFoIaLU4aeWuLCsTe21ThtRWXBtWnqXg",
+    authDomain: "spese-mensili-30011.firebaseapp.com",
+    projectId: "spese-mensili-30011",
+    storageBucket: "spese-mensili-30011.firebasestorage.app",
+    messagingSenderId: "599565899253",
+    appId: "1:599565899253:web:6c346704b4228c75a4fcbc"
   };
   var PROJECT_ID = firebaseConfig.projectId;
   var API_KEY = firebaseConfig.apiKey;
   var API_BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';
   var DOC_PATH = '/spese/dati';
+  // vecchio progetto condiviso «spesa»: si legge SOLO per copiare i dati una volta, non si scrive mai
+  var OLD_BASE = 'https://firestore.googleapis.com/v1/projects/spesa-b6ed3/databases/(default)/documents';
+  var OLD_KEY = 'AIzaSyBf_L7I710y1uCfqexrRS2A7fa1AIeQdPM';
+  var migrazioneInSospeso = false;
   var seeded = false;
 
   function fsFetch(path, opts, ms){
@@ -360,7 +364,7 @@ fieldset{border:0;margin:0;padding:0}
   function flush(){
     clearTimeout(pubTimer);
     pubTimer = null;
-    if (editing || debtEditing) { pubTimer = setTimeout(flush, 1400); return; }
+    if (editing || debtEditing || migrazioneInSospeso) { pubTimer = setTimeout(flush, 1400); return; }
     if(!pendingSave) return;
     pendingSave = false;
     var payload = { fields: { json: { stringValue: JSON.stringify(state) } } };
@@ -394,26 +398,86 @@ fieldset{border:0;margin:0;padding:0}
       }
     }).catch(function(err){
       if(err && err.code === 'not-found'){
-        if(!seeded && state.items.length === 0){
-          var iniz = document.getElementById('dati-iniziali');
-          if(iniz && iniz.textContent){
-            try{
-              var parsedIniz = JSON.parse(iniz.textContent);
-              if(parsedIniz && typeof parsedIniz === 'object' && Array.isArray(parsedIniz.items)){
-                state = parsedIniz;
-                if (!Array.isArray(state.debts)) state.debts = [];
-                if (!state.salaries || typeof state.salaries !== 'object') state.salaries = {};
-                render();
-                seeded = true;
-                schedule();
-              }
-            }catch(e){ /* ignore */ }
+        // primo avvio sul nuovo progetto: prima si copiano i dati dal vecchio server
+        migrazioneInSospeso = true;
+        migraDaVecchio().then(function(esito){
+          if(esito.trovato){
+            var po = esito.dati;
+            var ids = {};
+            po.items.forEach(function(i){ ids[i.id] = true; });
+            var idd = {};
+            po.debts.forEach(function(d){ idd[d.id] = true; });
+            // le voci appena inserite a mano durante l'attesa si aggiungono a quelle copiate
+            state.items.forEach(function(i){ if(!ids[i.id]) po.items.push(i); });
+            state.debts.forEach(function(d){ if(!idd[d.id]) po.debts.push(d); });
+            po.salaries = Object.assign({}, po.salaries, state.salaries);
+            state = po;
+            migrazioneInSospeso = false;
+            seeded = true;
+            render();
+            schedule();
+            avvisaCopia(po.items.length, po.debts.length);
+          } else {
+            migrazioneInSospeso = false;
+            seminaIniziali();
           }
-        }
+        }).catch(function(){
+          // vecchio server non raggiungibile: non si scrive niente, si riprova al prossimo giro
+          saveState = 'error';
+          render();
+        });
         return;
       }
       if (saveState === 'idle') { saveState = 'error'; render(); }
     });
+  }
+
+  // legge dal vecchio progetto (solo lettura) lo stesso documento
+  function migraDaVecchio(){
+    var url = OLD_BASE + DOC_PATH + '?key=' + OLD_KEY;
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, 12000);
+    return fetch(url, { signal: ctrl.signal }).then(function(res){
+      clearTimeout(timer);
+      if(res.status === 404) return { trovato: false };
+      if(!res.ok) throw new Error('vecchio-' + res.status);
+      return res.json().then(function(doc){
+        var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
+        if(!raw) return { trovato: false };
+        var parsed = JSON.parse(raw);
+        if(!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.items)) throw new Error('vecchio-formato');
+        if (!Array.isArray(parsed.debts)) parsed.debts = [];
+        if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
+        return { trovato: true, dati: parsed };
+      });
+    });
+  }
+
+  function avvisaCopia(nVoci, nDebiti){
+    var el = document.createElement('div');
+    el.textContent = 'Copiate ' + nVoci + ' voci e ' + nDebiti + (nDebiti === 1 ? ' debito' : ' debiti') + ' dal vecchio server ✓';
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 9000);
+  }
+
+  function seminaIniziali(){
+    if(!seeded && state.items.length === 0){
+      var iniz = document.getElementById('dati-iniziali');
+      if(iniz && iniz.textContent){
+        try{
+          var parsedIniz = JSON.parse(iniz.textContent);
+          if(parsedIniz && typeof parsedIniz === 'object' && Array.isArray(parsedIniz.items)){
+            state = parsedIniz;
+            if (!Array.isArray(state.debts)) state.debts = [];
+            if (!state.salaries || typeof state.salaries !== 'object') state.salaries = {};
+            render();
+            seeded = true;
+            schedule();
+          }
+        }catch(e){ /* ignore */ }
+      }
+    }
   }
 
   var pollTimer = null;
@@ -421,7 +485,7 @@ fieldset{border:0;margin:0;padding:0}
     render();
     caricaRemoto();
     pollTimer = setInterval(function(){
-      if (pendingSave || saveState === 'pending') return;
+      if ((pendingSave || saveState === 'pending') && !migrazioneInSospeso) return;
       if (editing || debtEditing) return;
       caricaRemoto();
     }, 6000);
