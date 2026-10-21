@@ -103,7 +103,7 @@ button{cursor:pointer}
 
 .form{background:var(--surface);border:2px solid var(--primary);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .form label,.form legend{font-size:14px;font-weight:600;color:var(--muted)}
-.form input[type=text]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
+.form input[type=text],.form input[type=email],.form input[type=password]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
 .two{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
 fieldset{border:0;margin:0;padding:0}
 .segs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
@@ -117,7 +117,14 @@ fieldset{border:0;margin:0;padding:0}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 .actions .primary{flex:1}
 .status{margin-top:12px;font-size:13px;color:var(--muted);text-align:center;min-height:18px}
-</style></head><body><div id="app"></div><script id="dati-iniziali" type="application/json">{"items":[{"id":"mub6sxaakiih","m":"2026-09","name":"Iphone","amt":60,"day":5,"pay":"conto"},{"id":"mub71x5wfya4","m":"2026-09","name":"Pranzo passatore","amt":50,"day":5,"pay":"conto"},{"id":"mub7ijipwog7","m":"2026-10","name":"Directa","amt":500,"day":13,"pay":"conto"},{"id":"mub7pitjtxyh","m":"2026-10","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mub7qjfn2tcf","m":"2026-10","name":"Bici","amt":280,"day":21,"pay":"conto"},{"id":"mub7upo31f7y","m":"2026-11","name":"Directa","amt":500,"day":13,"pay":"conto"},{"id":"mub7upo339qg","m":"2026-11","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mub7upo36q1h","m":"2026-11","name":"Bici","amt":280,"day":21,"pay":"conto"},{"id":"mubcan8dcaj5","m":"2026-10","name":"Meccanico","amt":200,"day":11,"pay":"contanti"},{"id":"mubce6kfjsc9","m":"2026-11","name":"Meccanico","amt":200,"day":11,"pay":"contanti"},{"id":"mubcfyfhp7ti","m":"2026-11","name":"Regalo Carra","amt":100,"day":12,"pay":"contanti"},{"id":"mubch0813f8t","m":"2026-12","name":"Meccanico","amt":163,"day":11,"pay":"contanti"},{"id":"mubch9xybg49","m":"2026-12","name":"Directa","amt":500,"day":13,"pay":"conto"},{"id":"mubchmk4mkn1","m":"2026-12","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubcibotr81m","m":"2026-12","name":"Regali","amt":300,"day":15,"pay":"contanti"},{"id":"mubck1cg2ry7","m":"2027-01","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubck1cg01co","m":"2027-01","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubclzrx6pau","m":"2027-03","name":"Assicurazione","amt":600,"day":11,"pay":"conto"},{"id":"mubcn5hqkh5n","m":"2027-01","name":"Regalo Giuli","amt":150,"day":15,"pay":"contanti"},{"id":"mubcqapta39f","m":"2027-02","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubcqapt49dm","m":"2027-02","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubcqxjgioau","m":"2027-03","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubcqxjgfqeu","m":"2027-03","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mubcr2o7re4n","m":"2027-04","name":"Directa","amt":600,"day":13,"pay":"conto"},{"id":"mubcr2o7dmbv","m":"2027-04","name":"Vodafone","amt":10,"day":14,"pay":"conto"},{"id":"mugpiifc4jes","m":"2026-10","name":"Coaching","amt":170,"day":25,"pay":"conto"},{"id":"mugpitpftzkq","m":"2026-11","name":"Coaching","amt":170,"day":25,"pay":"conto"},{"id":"mugq8q9jyl0b","m":"2026-10","name":"Ecografia","amt":35,"day":13,"pay":"conto"},{"id":"mugsr9c4zi9x","m":"2026-10","name":"Fisio","amt":40,"day":15,"pay":"contanti"},{"id":"muhl0402p5d1","m":"2026-09","name":"Telepass","amt":220,"day":1,"pay":"conto"},{"id":"muhl2k8fpsv6","m":"2026-10","name":"Psy","amt":60,"day":20,"pay":"contanti"},{"id":"mujk2om81x4u","m":"2026-10","name":"Telepass","amt":0.01,"day":1,"pay":"conto"}],"debts":[{"id":"mub8928a7gbd","name":"Meccanico","amt":563}],"salaries":{"2026-09":2350}}</script><script id="main">
+.auth-t{font-family:var(--display);font-weight:700;font-size:20px;margin:0}
+.note{margin:0;font-size:13px;color:var(--muted)}
+.okm{margin:0;color:var(--conto-text);font-size:14px;font-weight:600}
+.sect{margin:18px 0 0}
+.sect h2{font-family:var(--display);font-weight:700;font-size:18px;margin:0 0 8px}
+.toprow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+button:disabled{opacity:.6;cursor:default}
+</style></head><body><div id="app"></div><script id="main">
 (function(){
   var app = document.getElementById('app');
   var state = { items: [], debts: [], salaries: {} };
@@ -247,6 +254,8 @@ fieldset{border:0;margin:0;padding:0}
   }
 
   function render(){
+    if (!sessione) { renderAccesso(); return; }
+    if (view === 'impostazioni') { renderImpostazioni(); return; }
     if (view === 'year') {
       var h2 = '<header class="top">' +
         '<div class="mid"><h1 class="month">Prossimi 12 mesi</h1><p class="sub">Quanto hai già segnato per ognuno</p></div>' +
@@ -266,7 +275,7 @@ fieldset{border:0;margin:0;padding:0}
       '<button class="nav" data-act="prev" aria-label="Mese precedente">‹</button>' +
       '<div class="mid"><h1 class="month">' + esc(label(cur)) + '</h1><p class="sub">' + esc(range(cur)) + '</p></div>' +
       '<button class="nav" data-act="next" aria-label="Mese successivo">›</button></header>' +
-      '<div style="text-align:center"><button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
+      '<div class="toprow"><button class="yr-btn" data-act="set-open">Impostazioni</button><button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
 
     h += debtHtml();
     h += '<section class="totals" aria-label="Totali del mese">' +
@@ -309,7 +318,7 @@ fieldset{border:0;margin:0;padding:0}
     if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); }
   }
 
-  // ---- salvataggio: Firestore via REST (progetto dedicato spese-mensili) ----
+  // ---- accesso (email e password) e salvataggio: Firestore via REST, un archivio privato per ogni utente ----
   var firebaseConfig = {
     apiKey: "AIzaSyAKFoIaLU4aeWuLCsTe21ThtRWXBtWnqXg",
     authDomain: "spese-mensili-30011.firebaseapp.com",
@@ -321,36 +330,161 @@ fieldset{border:0;margin:0;padding:0}
   var PROJECT_ID = firebaseConfig.projectId;
   var API_KEY = firebaseConfig.apiKey;
   var API_BASE = 'https://firestore.googleapis.com/v1/projects/' + PROJECT_ID + '/databases/(default)/documents';
-  var DOC_PATH = '/spese/dati';
-  // vecchio progetto condiviso «spesa»: si legge SOLO per copiare i dati una volta, non si scrive mai
-  var OLD_BASE = 'https://firestore.googleapis.com/v1/projects/spesa-b6ed3/databases/(default)/documents';
-  var OLD_KEY = 'AIzaSyBf_L7I710y1uCfqexrRS2A7fa1AIeQdPM';
+  var AUTH_BASE = 'https://identitytoolkit.googleapis.com/v1/accounts:';
+  var TOKEN_URL = 'https://securetoken.googleapis.com/v1/token?key=' + API_KEY;
+  var DOC_PATH = '';
+  var OLD_DOC_PATH = '/spese/dati'; // archivio di prima dell'accesso: serve solo a portare i dati del proprietario nel suo account
+  var VUOLE_IMPORTARE = /[?&]importa=1(&|$)/.test(location.search);
+  var importTentato = false;
   var migrazioneInSospeso = false;
   var seeded = false;
 
-  function fsFetch(path, opts, ms){
+  var sessione = null; // { idToken, refreshToken, uid, email, scade }
+  var authMode = 'accedi'; // accedi | iscriviti | reset
+  var authMsg = null;      // { tipo: 'err' | 'ok', testo }
+  var authBusy = false;
+  var authEmail = '';
+  var setMsg = null;       // messaggi nelle impostazioni: { sez, tipo, testo }
+  var armedElimina = false;
+
+  function leggiSessione(){
+    try{
+      var r = localStorage.getItem('spese_sessione');
+      if(!r) return null;
+      var x = JSON.parse(r);
+      return (x && x.refreshToken && x.uid) ? x : null;
+    }catch(e){ return null; }
+  }
+  function salvaSessione(x){
+    sessione = x;
+    try{
+      if(x) localStorage.setItem('spese_sessione', JSON.stringify(x));
+      else localStorage.removeItem('spese_sessione');
+    }catch(e){}
+    DOC_PATH = x ? ('/utenti/' + x.uid + '/spese/dati') : '';
+  }
+  function sessioneDa(j, emailFallback){
+    return {
+      idToken: j.idToken, refreshToken: j.refreshToken, uid: j.localId,
+      email: j.email || emailFallback || '',
+      scade: Date.now() + (parseInt(j.expiresIn, 10) || 3600) * 1000
+    };
+  }
+  function esciSubito(){
+    salvaSessione(null);
+    state = { items: [], debts: [], salaries: {} };
+    editing = null; debtEditing = null; debtOpen = false; view = 'month';
+    authMode = 'accedi'; authMsg = null; setMsg = null; armedElimina = false;
+    render();
+  }
+
+  function erroreAuth(codice){
+    var c = String(codice || '').split(' ')[0].split(':')[0];
+    var m = {
+      EMAIL_EXISTS: "Questa email è già iscritta. Prova ad accedere.",
+      INVALID_EMAIL: "L'email non sembra giusta. Controllala.",
+      MISSING_EMAIL: "Scrivi la tua email.",
+      MISSING_PASSWORD: "Scrivi la password.",
+      WEAK_PASSWORD: "La password è troppo corta: servono almeno 8 caratteri.",
+      INVALID_LOGIN_CREDENTIALS: "Email o password sbagliate.",
+      INVALID_PASSWORD: "La password è sbagliata.",
+      EMAIL_NOT_FOUND: "Non trovo nessun account con questa email.",
+      USER_DISABLED: "Questo account è stato disattivato.",
+      TOO_MANY_ATTEMPTS_TRY_LATER: "Troppi tentativi. Aspetta qualche minuto e riprova.",
+      OPERATION_NOT_ALLOWED: "L'accesso con email non è attivo sul server.",
+      CREDENTIAL_TOO_OLD_LOGIN_REQUIRED: "Per sicurezza devi rientrare: esci e accedi di nuovo.",
+      network: "Non riesco a collegarmi: controlla la connessione."
+    };
+    return m[c] || "Qualcosa è andato storto. Riprova tra poco.";
+  }
+
+  function authPost(metodo, corpo){
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, 15000);
+    return fetch(AUTH_BASE + metodo + '?key=' + API_KEY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Firebase-Locale': 'it' },
+      body: JSON.stringify(corpo),
+      signal: ctrl.signal
+    }).then(function(res){
+      clearTimeout(timer);
+      return res.json().then(function(j){
+        if(!res.ok){ var e = new Error('auth'); e.code = (j && j.error && j.error.message) || 'error'; throw e; }
+        return j;
+      }, function(){
+        if(!res.ok){ var e2 = new Error('auth'); e2.code = 'error'; throw e2; }
+        return {};
+      });
+    }, function(){
+      clearTimeout(timer);
+      var en = new Error('network'); en.code = 'network'; throw en;
+    });
+  }
+
+  var rinnovo = null;
+  function getToken(forza){
+    if(!sessione){ var e0 = new Error('no-session'); e0.code = 'no-session'; return Promise.reject(e0); }
+    if(!forza && sessione.scade - Date.now() > 60000) return Promise.resolve(sessione.idToken);
+    if(rinnovo) return rinnovo;
+    var corpo = 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(sessione.refreshToken);
+    rinnovo = fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: corpo
+    }).then(function(res){
+      return res.json().then(function(j){
+        if(!res.ok){ var e = new Error('refresh'); e.code = (j && j.error && j.error.message) || 'error'; throw e; }
+        return j;
+      });
+    }, function(){
+      var en = new Error('network'); en.code = 'network'; throw en;
+    }).then(function(j){
+      var nuova = {
+        idToken: j.id_token, refreshToken: j.refresh_token, uid: j.user_id || sessione.uid,
+        email: sessione.email,
+        scade: Date.now() + (parseInt(j.expires_in, 10) || 3600) * 1000
+      };
+      salvaSessione(nuova);
+      rinnovo = null;
+      return nuova.idToken;
+    }, function(err){
+      rinnovo = null;
+      var c = err && err.code;
+      if(c === 'TOKEN_EXPIRED' || c === 'INVALID_REFRESH_TOKEN' || c === 'USER_NOT_FOUND' || c === 'USER_DISABLED'){ esciSubito(); }
+      throw err;
+    });
+    return rinnovo;
+  }
+
+  function fsFetch(path, opts, ms, secondaVolta){
     opts = opts || {};
     var sep = path.indexOf('?') > -1 ? '&' : '?';
     var url = API_BASE + path + sep + 'key=' + API_KEY;
-    var ctrl = new AbortController();
-    var timer = setTimeout(function(){ ctrl.abort(); }, ms || 12000);
-    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
-      .then(function(res){
-        clearTimeout(timer);
-        if(!res.ok){
-          if(res.status === 404){ var e404 = new Error('not-found'); e404.code = 'not-found'; throw e404; }
-          if(res.status === 403){ var e403 = new Error('permission-denied'); e403.code = 'permission-denied'; throw e403; }
-          if(res.status === 429){ var e429 = new Error('resource-exhausted'); e429.code = 'resource-exhausted'; throw e429; }
-          var eOther = new Error('http-'+res.status); eOther.code = 'error'; throw eOther;
-        }
-        return res.status === 204 ? null : res.json();
-      })
-      .catch(function(err){
-        clearTimeout(timer);
-        if(err && err.code) throw err;
-        if(err && err.name === 'AbortError'){ var eT = new Error('timeout'); eT.code = 'timeout'; throw eT; }
-        var eN = new Error('network'); eN.code = 'network'; throw eN;
-      });
+    return getToken().then(function(token){
+      var ctrl = new AbortController();
+      var timer = setTimeout(function(){ ctrl.abort(); }, ms || 12000);
+      var headers = Object.assign({}, opts.headers || {}, { 'Authorization': 'Bearer ' + token });
+      return fetch(url, Object.assign({}, opts, { headers: headers, signal: ctrl.signal }))
+        .then(function(res){
+          clearTimeout(timer);
+          if(!res.ok){
+            if(res.status === 404){ var e404 = new Error('not-found'); e404.code = 'not-found'; throw e404; }
+            if((res.status === 401 || res.status === 403) && !secondaVolta){
+              return getToken(true).then(function(){ return fsFetch(path, opts, ms, true); });
+            }
+            if(res.status === 401 || res.status === 403){ var e403 = new Error('permission-denied'); e403.code = 'permission-denied'; throw e403; }
+            if(res.status === 429){ var e429 = new Error('resource-exhausted'); e429.code = 'resource-exhausted'; throw e429; }
+            var eOther = new Error('http-'+res.status); eOther.code = 'error'; throw eOther;
+          }
+          return res.status === 204 ? null : res.json();
+        })
+        .catch(function(err){
+          clearTimeout(timer);
+          if(err && err.code) throw err;
+          if(err && err.name === 'AbortError'){ var eT = new Error('timeout'); eT.code = 'timeout'; throw eT; }
+          var eN = new Error('network'); eN.code = 'network'; throw eN;
+        });
+    });
   }
 
   var pubTimer = null;
@@ -364,6 +498,7 @@ fieldset{border:0;margin:0;padding:0}
   function flush(){
     clearTimeout(pubTimer);
     pubTimer = null;
+    if (!sessione) return;
     if (editing || debtEditing || migrazioneInSospeso) { pubTimer = setTimeout(flush, 1400); return; }
     if(!pendingSave) return;
     pendingSave = false;
@@ -383,6 +518,7 @@ fieldset{border:0;margin:0;padding:0}
   }
 
   function caricaRemoto(){
+    if(!sessione) return;
     fsFetch(DOC_PATH, {}, 12000).then(function(doc){
       var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
       if(raw){
@@ -398,93 +534,205 @@ fieldset{border:0;margin:0;padding:0}
       }
     }).catch(function(err){
       if(err && err.code === 'not-found'){
-        // primo avvio sul nuovo progetto: prima si copiano i dati dal vecchio server
-        migrazioneInSospeso = true;
-        migraDaVecchio().then(function(esito){
-          if(esito.trovato){
-            var po = esito.dati;
-            var ids = {};
-            po.items.forEach(function(i){ ids[i.id] = true; });
-            var idd = {};
-            po.debts.forEach(function(d){ idd[d.id] = true; });
-            // le voci appena inserite a mano durante l'attesa si aggiungono a quelle copiate
-            state.items.forEach(function(i){ if(!ids[i.id]) po.items.push(i); });
-            state.debts.forEach(function(d){ if(!idd[d.id]) po.debts.push(d); });
-            po.salaries = Object.assign({}, po.salaries, state.salaries);
-            state = po;
-            migrazioneInSospeso = false;
-            seeded = true;
-            render();
-            schedule();
-            avvisaCopia(po.items.length, po.debts.length);
-          } else {
-            migrazioneInSospeso = false;
-            seminaIniziali();
-          }
-        }).catch(function(){
-          // vecchio server non raggiungibile: non si scrive niente, si riprova al prossimo giro
-          saveState = 'error';
-          render();
-        });
+        // account nuovo, ancora senza spese: parte vuoto. Solo con ?importa=1 si portano qui i vecchi dati del proprietario
+        if(VUOLE_IMPORTARE && !importTentato) importaVecchi();
         return;
       }
-      if (saveState === 'idle') { saveState = 'error'; render(); }
+      if (sessione && saveState === 'idle') { saveState = 'error'; render(); }
     });
   }
 
-  // legge dal vecchio progetto (solo lettura) lo stesso documento
-  function migraDaVecchio(){
-    var url = OLD_BASE + DOC_PATH + '?key=' + OLD_KEY;
-    var ctrl = new AbortController();
-    var timer = setTimeout(function(){ ctrl.abort(); }, 12000);
-    return fetch(url, { signal: ctrl.signal }).then(function(res){
-      clearTimeout(timer);
-      if(res.status === 404) return { trovato: false };
-      if(!res.ok) throw new Error('vecchio-' + res.status);
-      return res.json().then(function(doc){
-        var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
-        if(!raw) return { trovato: false };
-        var parsed = JSON.parse(raw);
-        if(!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.items)) throw new Error('vecchio-formato');
-        if (!Array.isArray(parsed.debts)) parsed.debts = [];
-        if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
-        return { trovato: true, dati: parsed };
-      });
+  function togliFlagImporta(){
+    VUOLE_IMPORTARE = false;
+    try{ history.replaceState(null, '', location.pathname); }catch(e){}
+  }
+  function importaVecchi(){
+    importTentato = true;
+    migrazioneInSospeso = true;
+    fsFetch(OLD_DOC_PATH, {}, 12000).then(function(doc){
+      var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
+      var po = raw ? JSON.parse(raw) : null;
+      if(!po || typeof po !== 'object' || !Array.isArray(po.items)){ var ef = new Error('formato'); ef.code = 'formato'; throw ef; }
+      if (!Array.isArray(po.debts)) po.debts = [];
+      if (!po.salaries || typeof po.salaries !== 'object') po.salaries = {};
+      var ids = {}; po.items.forEach(function(i){ ids[i.id] = true; });
+      var idd = {}; po.debts.forEach(function(d){ idd[d.id] = true; });
+      // le voci appena inserite a mano durante l'attesa si aggiungono a quelle importate
+      state.items.forEach(function(i){ if(!ids[i.id]) po.items.push(i); });
+      state.debts.forEach(function(d){ if(!idd[d.id]) po.debts.push(d); });
+      po.salaries = Object.assign({}, po.salaries, state.salaries);
+      state = po;
+      migrazioneInSospeso = false;
+      togliFlagImporta();
+      render();
+      schedule();
+      avvisa('Importate ' + po.items.length + (po.items.length === 1 ? ' voce' : ' voci') + ' e ' + po.debts.length + (po.debts.length === 1 ? ' debito' : ' debiti') + ' nel tuo account ✓');
+    }).catch(function(err){
+      var c = err && err.code;
+      if(c === 'not-found' || c === 'formato' || err instanceof SyntaxError){
+        migrazioneInSospeso = false;
+        togliFlagImporta();
+        avvisa(c === 'not-found' ? 'Non ho trovato vecchi dati da importare.' : 'I vecchi dati non si riescono a leggere.');
+        return;
+      }
+      importTentato = false; // si riprova al prossimo giro
+      saveState = 'error';
+      render();
     });
   }
 
-  function avvisaCopia(nVoci, nDebiti){
+  function avvisa(testo){
     var el = document.createElement('div');
-    el.textContent = 'Copiate ' + nVoci + ' voci e ' + nDebiti + (nDebiti === 1 ? ' debito' : ' debiti') + ' dal vecchio server ✓';
-    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+    el.textContent = testo;
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:90vw;text-align:center';
     document.body.appendChild(el);
     setTimeout(function(){ el.remove(); }, 9000);
   }
 
-  function seminaIniziali(){
-    if(!seeded && state.items.length === 0){
-      var iniz = document.getElementById('dati-iniziali');
-      if(iniz && iniz.textContent){
-        try{
-          var parsedIniz = JSON.parse(iniz.textContent);
-          if(parsedIniz && typeof parsedIniz === 'object' && Array.isArray(parsedIniz.items)){
-            state = parsedIniz;
-            if (!Array.isArray(state.debts)) state.debts = [];
-            if (!state.salaries || typeof state.salaries !== 'object') state.salaries = {};
-            render();
-            seeded = true;
-            schedule();
-          }
-        }catch(e){ /* ignore */ }
-      }
+  // ---- schermata di accesso / iscrizione ----
+  function renderAccesso(){
+    var sotto = authMode === 'iscriviti' ? "Ti bastano un'email e una password."
+      : (authMode === 'reset' ? "Scrivi la tua email: ti mandiamo un link per sceglierne una nuova." : "Accedi per vedere le tue spese.");
+    var titolo = authMode === 'iscriviti' ? 'Crea il tuo account' : (authMode === 'reset' ? 'Password dimenticata' : 'Accedi');
+    var h = '<header class="top"><div class="mid"><h1 class="month">Spese del mese</h1><p class="sub">' + esc(sotto) + '</p></div></header>';
+    h += '<form class="form" data-auth novalidate><h2 class="auth-t">' + esc(titolo) + '</h2>' +
+      '<label>Email<input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" value="' + esc(authEmail) + '"></label>';
+    if (authMode !== 'reset') h += '<label>Password<input type="password" name="password" autocomplete="' + (authMode === 'iscriviti' ? 'new-password' : 'current-password') + '"></label>';
+    if (authMode === 'iscriviti') h += '<label>Ripeti la password<input type="password" name="password2" autocomplete="new-password"></label>' +
+      "<p class=\"note\">Almeno 8 caratteri. Le tue spese sono visibili solo a te e a chi gestisce l'app.</p>";
+    if (authMsg) h += '<p class="' + (authMsg.tipo === 'ok' ? 'okm' : 'err') + '" role="alert">' + esc(authMsg.testo) + '</p>';
+    var etichetta = authBusy ? 'Un attimo…' : (authMode === 'iscriviti' ? 'Iscriviti' : (authMode === 'reset' ? 'Mandami il link' : 'Accedi'));
+    h += '<div class="actions"><button type="submit" class="btn primary"' + (authBusy ? ' disabled' : '') + '>' + etichetta + '</button></div></form>';
+    h += '<div class="more" style="flex-direction:column;align-items:center">';
+    if (authMode === 'accedi') h += '<button class="quiet" data-act="auth-reset">Hai dimenticato la password?</button><button class="quiet" data-act="auth-iscriviti">Non hai un account? Iscriviti</button>';
+    else h += '<button class="quiet" data-act="auth-accedi">Torna all\'accesso</button>';
+    h += '</div>';
+    app.innerHTML = h;
+  }
+
+  function inviaAuth(form){
+    if (authBusy) return;
+    var email = form.elements.email.value.trim();
+    var pw = form.elements.password ? form.elements.password.value : '';
+    var pw2 = form.elements.password2 ? form.elements.password2.value : '';
+    authEmail = email; authMsg = null;
+    if (!email) { authMsg = { tipo: 'err', testo: 'Scrivi la tua email.' }; renderAccesso(); return; }
+    if (authMode === 'reset') {
+      authBusy = true; renderAccesso();
+      authPost('sendOobCode', { requestType: 'PASSWORD_RESET', email: email }).then(function(){
+        authBusy = false;
+        authMsg = { tipo: 'ok', testo: 'Fatto. Se questa email è iscritta, tra poco ti arriva un messaggio con il link. Controlla anche la posta indesiderata.' };
+        renderAccesso();
+      }).catch(function(err){
+        authBusy = false; authMsg = { tipo: 'err', testo: erroreAuth(err && err.code) }; renderAccesso();
+      });
+      return;
     }
+    if (!pw) { authMsg = { tipo: 'err', testo: 'Scrivi la password.' }; renderAccesso(); return; }
+    if (authMode === 'iscriviti') {
+      if (pw.length < 8) { authMsg = { tipo: 'err', testo: 'La password deve avere almeno 8 caratteri.' }; renderAccesso(); return; }
+      if (pw !== pw2) { authMsg = { tipo: 'err', testo: 'Le due password non coincidono.' }; renderAccesso(); return; }
+    }
+    authBusy = true; renderAccesso();
+    authPost(authMode === 'iscriviti' ? 'signUp' : 'signInWithPassword', { email: email, password: pw, returnSecureToken: true }).then(function(j){
+      salvaSessione(sessioneDa(j, email));
+      authBusy = false; authMsg = null; authEmail = '';
+      state = { items: [], debts: [], salaries: {} };
+      view = 'month'; saveState = 'idle'; importTentato = false;
+      render();
+      caricaRemoto();
+    }).catch(function(err){
+      authBusy = false; authMsg = { tipo: 'err', testo: erroreAuth(err && err.code) }; renderAccesso();
+    });
+  }
+
+  // ---- impostazioni ----
+  function msgHtml(sez){
+    return (setMsg && setMsg.sez === sez) ? '<p class="' + (setMsg.tipo === 'ok' ? 'okm' : 'err') + '" role="alert">' + esc(setMsg.testo) + '</p>' : '';
+  }
+  function renderImpostazioni(){
+    var h = '<header class="top"><div class="mid"><h1 class="month">Impostazioni</h1><p class="sub">Il tuo account</p></div></header>' +
+      '<button class="yr-btn" data-act="set-back">‹ Torna alle spese</button>';
+    h += '<section class="sect"><h2>Account</h2><p class="sub" style="margin:0">Sei dentro come <strong>' + esc(sessione.email) + '</strong></p></section>';
+    h += '<section class="sect"><h2>Cambia password</h2><form class="form" data-cambia novalidate>' +
+      '<label>Password attuale<input type="password" name="vecchia" autocomplete="current-password"></label>' +
+      '<label>Nuova password<input type="password" name="nuova" autocomplete="new-password"></label>' +
+      '<label>Ripeti la nuova password<input type="password" name="nuova2" autocomplete="new-password"></label>' +
+      '<p class="note">Almeno 8 caratteri.</p>' + msgHtml('cambia') +
+      '<div class="actions"><button type="submit" class="btn primary">Cambia password</button></div></form></section>';
+    h += '<section class="sect"><h2>Password dimenticata</h2><p class="sub" style="margin:0 0 8px">Ti mandiamo per email un link per sceglierne una nuova.</p>' +
+      msgHtml('link') + '<button class="btn wide" data-act="set-link">Mandami il link per email</button></section>';
+    h += '<section class="sect"><button class="btn wide" data-act="set-esci">Esci da questo dispositivo</button></section>';
+    h += '<section class="sect"><h2>Elimina account</h2>';
+    if (!armedElimina) {
+      h += '<p class="sub" style="margin:0 0 8px">Cancella per sempre il tuo account e tutte le tue spese.</p><button class="btn wide danger" data-act="set-elimina">Elimina il mio account</button>';
+    } else {
+      h += '<form class="form" data-elimina novalidate><p class="err">Stai per cancellare tutto, senza possibilità di tornare indietro.</p>' +
+        '<label>Scrivi la password per confermare<input type="password" name="pw" autocomplete="current-password"></label>' + msgHtml('elimina') +
+        '<div class="actions"><button type="submit" class="btn danger">Elimina per sempre</button><button type="button" class="btn" data-act="set-annulla">Annulla</button></div></form>';
+    }
+    h += '</section>';
+    app.innerHTML = h;
+  }
+
+  function cambiaPassword(form){
+    var vecchia = form.elements.vecchia.value, nuova = form.elements.nuova.value, nuova2 = form.elements.nuova2.value;
+    if (!vecchia) { setMsg = { sez: 'cambia', tipo: 'err', testo: 'Scrivi la password attuale.' }; render(); return; }
+    if (nuova.length < 8) { setMsg = { sez: 'cambia', tipo: 'err', testo: 'La nuova password deve avere almeno 8 caratteri.' }; render(); return; }
+    if (nuova !== nuova2) { setMsg = { sez: 'cambia', tipo: 'err', testo: 'Le due password nuove non coincidono.' }; render(); return; }
+    authPost('signInWithPassword', { email: sessione.email, password: vecchia, returnSecureToken: true }).then(function(j){
+      return authPost('update', { idToken: j.idToken, password: nuova, returnSecureToken: true });
+    }).then(function(j2){
+      salvaSessione(sessioneDa(j2, sessione.email));
+      setMsg = { sez: 'cambia', tipo: 'ok', testo: 'Password cambiata.' };
+      render();
+    }).catch(function(err){
+      var c = String((err && err.code) || '');
+      var t = (c.indexOf('INVALID_LOGIN_CREDENTIALS') === 0 || c.indexOf('INVALID_PASSWORD') === 0) ? 'La password attuale è sbagliata.' : erroreAuth(c);
+      setMsg = { sez: 'cambia', tipo: 'err', testo: t };
+      render();
+    });
+  }
+  function mandaLink(){
+    authPost('sendOobCode', { requestType: 'PASSWORD_RESET', email: sessione.email }).then(function(){
+      setMsg = { sez: 'link', tipo: 'ok', testo: 'Fatto. Controlla la tua email (anche la posta indesiderata).' };
+      render();
+    }).catch(function(err){
+      setMsg = { sez: 'link', tipo: 'err', testo: erroreAuth(err && err.code) };
+      render();
+    });
+  }
+  function eliminaAccount(form){
+    var pw = form.elements.pw.value;
+    if (!pw) { setMsg = { sez: 'elimina', tipo: 'err', testo: 'Scrivi la password per confermare.' }; render(); return; }
+    authPost('signInWithPassword', { email: sessione.email, password: pw, returnSecureToken: true }).then(function(j){
+      salvaSessione(sessioneDa(j, sessione.email));
+      // prima si cancellano le spese, poi l'account
+      return fsFetch(DOC_PATH, { method: 'DELETE' }, 12000).catch(function(err){
+        if (err && err.code === 'not-found') return null;
+        throw err;
+      });
+    }).then(function(){
+      return authPost('delete', { idToken: sessione.idToken });
+    }).then(function(){
+      esciSubito();
+      authMsg = { tipo: 'ok', testo: 'Il tuo account e le tue spese sono stati eliminati.' };
+      render();
+    }).catch(function(err){
+      var c = String((err && err.code) || '');
+      var t = (c.indexOf('INVALID_LOGIN_CREDENTIALS') === 0 || c.indexOf('INVALID_PASSWORD') === 0) ? 'La password è sbagliata.' : erroreAuth(c);
+      setMsg = { sez: 'elimina', tipo: 'err', testo: t };
+      render();
+    });
   }
 
   var pollTimer = null;
   function initStorage(){
+    salvaSessione(leggiSessione());
     render();
-    caricaRemoto();
+    if (sessione) caricaRemoto();
     pollTimer = setInterval(function(){
+      if (!sessione) return;
       if ((pendingSave || saveState === 'pending') && !migrazioneInSospeso) return;
       if (editing || debtEditing) return;
       caricaRemoto();
@@ -502,6 +750,15 @@ fieldset{border:0;margin:0;padding:0}
     var t = ev.target.closest('[data-act]');
     if (!t) return;
     var act = t.getAttribute('data-act');
+    if (act === 'auth-reset') { authMode = 'reset'; authMsg = null; renderAccesso(); return; }
+    if (act === 'auth-iscriviti') { authMode = 'iscriviti'; authMsg = null; renderAccesso(); return; }
+    if (act === 'auth-accedi') { authMode = 'accedi'; authMsg = null; renderAccesso(); return; }
+    if (act === 'set-open') { view = 'impostazioni'; setMsg = null; armedElimina = false; render(); return; }
+    if (act === 'set-back') { view = 'month'; setMsg = null; armedElimina = false; render(); return; }
+    if (act === 'set-link') { mandaLink(); return; }
+    if (act === 'set-esci') { esciSubito(); return; }
+    if (act === 'set-elimina') { armedElimina = true; setMsg = null; render(); return; }
+    if (act === 'set-annulla') { armedElimina = false; setMsg = null; render(); return; }
     if (act === 'view-year') { view = 'year'; render(); return; }
     if (act === 'view-month') { view = 'month'; render(); return; }
     if (act === 'yr-pick') { cur = t.getAttribute('data-k'); try { sessionStorage.setItem('mese', cur); } catch(e) {} view = 'month'; render(); return; }
@@ -534,6 +791,9 @@ fieldset{border:0;margin:0;padding:0}
 
   app.addEventListener('submit', function(ev){
     ev.preventDefault();
+    if (ev.target.hasAttribute('data-auth')) { inviaAuth(ev.target); return; }
+    if (ev.target.hasAttribute('data-cambia')) { cambiaPassword(ev.target); return; }
+    if (ev.target.hasAttribute('data-elimina')) { eliminaAccount(ev.target); return; }
     if (ev.target.hasAttribute('data-debt-form')) {
       var fd = ev.target;
       var dn = fd.elements.name.value.trim(), rawA = fd.elements.amt.value, da = parseAmount(rawA);
