@@ -103,6 +103,7 @@ button{cursor:pointer}
 
 .form{background:var(--surface);border:2px solid var(--primary);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .form label,.form legend{font-size:14px;font-weight:600;color:var(--muted)}
+.form select{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
 .form input[type=text],.form input[type=email],.form input[type=password]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
 .two{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
 fieldset{border:0;margin:0;padding:0}
@@ -166,7 +167,39 @@ button:disabled{opacity:.6;cursor:default}
     return key(y, m);
   }
   function label(k){ var p = k.split('-'); return MESI[+p[1] - 1] + ' ' + p[0]; }
-  function range(k){ var m = +k.split('-')[1] - 1; return START + ' ' + MESI3[m] + ' – ' + (START - 1) + ' ' + MESI3[(m + 1) % 12]; }
+  function range(k){
+    var m = +k.split('-')[1] - 1;
+    if (START === 1) return '1 ' + MESI3[m] + ' – fine ' + MESI3[m];
+    return START + ' ' + MESI3[m] + ' – ' + (START - 1) + ' ' + MESI3[(m + 1) % 12];
+  }
+  function statoVuoto(){ return { items: [], debts: [], salaries: {}, startDay: 1 }; }
+  function inizioValido(n){ return typeof n === 'number' && n >= 1 && n <= 28 && Math.floor(n) === n; }
+  // legge dall'archivio il giorno di inizio del mese (chi non lo ha scelto mai ha l'11, come prima)
+  function applicaInizio(){
+    START = inizioValido(state.startDay) ? state.startDay : 11;
+    var scelto = null;
+    try { scelto = sessionStorage.getItem('mese'); } catch(e) {}
+    if (!/^\d{4}-\d{2}$/.test(scelto || '')) cur = periodOf(new Date());
+  }
+  // cambia il giorno di inizio e sposta ogni spesa nel mese giusto, così resta alla sua data reale
+  function cambiaInizioMese(nuovo){
+    var vecchio = START;
+    if (nuovo === vecchio) return;
+    state.items.forEach(function(it){
+      var p = it.m.split('-'), y = +p[0], mi = +p[1] - 1;
+      var rm = it.day >= vecchio ? mi : mi + 1, ry = y;        // data reale con il vecchio inizio
+      if (rm > 11) { rm = 0; ry++; }
+      var pm = rm, py = ry;                                     // mese giusto con il nuovo inizio
+      if (it.day < nuovo) { pm--; if (pm < 0) { pm = 11; py--; } }
+      it.m = key(py, pm);
+    });
+    state.startDay = nuovo;
+    START = nuovo;
+    cur = periodOf(new Date());
+    try { sessionStorage.setItem('mese', cur); } catch(e) {}
+    editing = null; debtEditing = null;
+    schedule();
+  }
   function ord(day){ return day >= START ? day : day + 31; }
   function realMonth(k, day){ var m = +k.split('-')[1] - 1; return day >= START ? m : (m + 1) % 12; }
 
@@ -372,7 +405,7 @@ button:disabled{opacity:.6;cursor:default}
   }
   function esciSubito(){
     salvaSessione(null);
-    state = { items: [], debts: [], salaries: {} };
+    state = statoVuoto();
     editing = null; debtEditing = null; debtOpen = false; view = 'month';
     authMode = 'accedi'; authMsg = null; setMsg = null; armedElimina = false;
     render();
@@ -527,7 +560,9 @@ button:disabled{opacity:.6;cursor:default}
           if(parsed && typeof parsed === 'object' && Array.isArray(parsed.items)){
             if (!Array.isArray(parsed.debts)) parsed.debts = [];
             if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
+            if (!inizioValido(parsed.startDay)) parsed.startDay = 11;
             state = parsed;
+            applicaInizio();
             render();
           }
         }catch(e){ /* ignore */ }
@@ -536,6 +571,7 @@ button:disabled{opacity:.6;cursor:default}
       if(err && err.code === 'not-found'){
         // account nuovo, ancora senza spese: parte vuoto. Solo con ?importa=1 si portano qui i vecchi dati del proprietario
         if(VUOLE_IMPORTARE && !importTentato) importaVecchi();
+        else if (state.items.length === 0 && !inizioValido(state.startDay)) { state.startDay = 1; applicaInizio(); render(); }
         return;
       }
       if (sessione && saveState === 'idle') { saveState = 'error'; render(); }
@@ -561,7 +597,9 @@ button:disabled{opacity:.6;cursor:default}
       state.items.forEach(function(i){ if(!ids[i.id]) po.items.push(i); });
       state.debts.forEach(function(d){ if(!idd[d.id]) po.debts.push(d); });
       po.salaries = Object.assign({}, po.salaries, state.salaries);
+      if (!inizioValido(po.startDay)) po.startDay = 11;
       state = po;
+      applicaInizio();
       migrazioneInSospeso = false;
       togliFlagImporta();
       render();
@@ -637,7 +675,8 @@ button:disabled{opacity:.6;cursor:default}
     authPost(authMode === 'iscriviti' ? 'signUp' : 'signInWithPassword', { email: email, password: pw, returnSecureToken: true }).then(function(j){
       salvaSessione(sessioneDa(j, email));
       authBusy = false; authMsg = null; authEmail = '';
-      state = { items: [], debts: [], salaries: {} };
+      state = statoVuoto();
+      applicaInizio();
       view = 'month'; saveState = 'idle'; importTentato = false;
       render();
       caricaRemoto();
@@ -654,6 +693,13 @@ button:disabled{opacity:.6;cursor:default}
     var h = '<header class="top"><div class="mid"><h1 class="month">Impostazioni</h1><p class="sub">Il tuo account</p></div></header>' +
       '<button class="yr-btn" data-act="set-back">‹ Torna alle spese</button>';
     h += '<section class="sect"><h2>Account</h2><p class="sub" style="margin:0">Sei dentro come <strong>' + esc(sessione.email) + '</strong></p></section>';
+    var opz = '';
+    for (var g = 1; g <= 28; g++) opz += '<option value="' + g + '"' + (g === START ? ' selected' : '') + '>' + (g === 1 ? '1 (mese normale)' : g) + '</option>';
+    h += '<section class="sect"><h2>Inizio del mese</h2><form class="form" data-inizio novalidate>' +
+      '<p class="note">Scegli da che giorno comincia il tuo mese. Con il 1 è il mese normale. Con il 27, per esempio, il mese di ottobre va dal 27 ottobre al 26 novembre.</p>' +
+      '<label>Il mio mese comincia il giorno<select name="giorno">' + opz + '</select></label>' +
+      '<p class="note">Ora il mese in corso va: ' + esc(range(periodOf(new Date()))) + '</p>' + msgHtml('inizio') +
+      '<div class="actions"><button type="submit" class="btn primary">Salva</button></div></form></section>';
     h += '<section class="sect"><h2>Cambia password</h2><form class="form" data-cambia novalidate>' +
       '<label>Password attuale<input type="password" name="vecchia" autocomplete="current-password"></label>' +
       '<label>Nuova password<input type="password" name="nuova" autocomplete="new-password"></label>' +
@@ -792,6 +838,15 @@ button:disabled{opacity:.6;cursor:default}
   app.addEventListener('submit', function(ev){
     ev.preventDefault();
     if (ev.target.hasAttribute('data-auth')) { inviaAuth(ev.target); return; }
+    if (ev.target.hasAttribute('data-inizio')) {
+      var g2 = parseInt(ev.target.elements.giorno.value, 10);
+      if (!(g2 >= 1 && g2 <= 28)) { setMsg = { sez: 'inizio', tipo: 'err', testo: 'Scegli un giorno tra 1 e 28.' }; render(); return; }
+      var cambia = g2 !== START;
+      cambiaInizioMese(g2);
+      setMsg = { sez: 'inizio', tipo: 'ok', testo: cambia ? 'Fatto. Le tue spese sono rimaste alle loro date. Il mese in corso ora va: ' + range(periodOf(new Date())) : 'Il giorno è già questo, non cambia niente.' };
+      render();
+      return;
+    }
     if (ev.target.hasAttribute('data-cambia')) { cambiaPassword(ev.target); return; }
     if (ev.target.hasAttribute('data-elimina')) { eliminaAccount(ev.target); return; }
     if (ev.target.hasAttribute('data-debt-form')) {
