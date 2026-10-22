@@ -245,7 +245,9 @@ button:disabled{opacity:.6;cursor:default}
         '<button type="submit" class="btn primary">Salva</button>' +
         '<button type="button" class="btn" data-act="cancel">Annulla</button>' +
         (isNew ? '' : '<button type="button" class="btn danger" data-act="delete">Elimina</button>') +
-      '</div></form>';
+      '</div>' +
+      (isNew ? '' : '<button type="button" class="btn wide" data-act="move-prev">‹ Sposta al mese prima (' + esc(label(shift(cur, -1))) + ')</button>') +
+      '</form>';
   }
 
   function debtForm(d){
@@ -841,6 +843,12 @@ button:disabled{opacity:.6;cursor:default}
     else if (act === 'copy') {
       candidates().forEach(function(i){ state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
       schedule(); render();
+    }
+    else if (act === 'move-prev') {
+      var mv = state.items.filter(function(i){ return i.id === editing; })[0];
+      if (!mv) return;
+      mv.m = shift(mv.m, -1);
+      editing = null; formError = ''; armedDelete = false; schedule(); render();
     }
     else if (act === 'trash') {
       var tid = t.getAttribute('data-id');
