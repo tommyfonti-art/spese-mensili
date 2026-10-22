@@ -158,7 +158,7 @@ button:disabled{opacity:.6;cursor:default}
   var armedDebt = false;
   var editing = null;      // null | 'new' | id
   var armedDelete = false;
-  var lastDeleted = null, lastDeletedTimer = null;
+  var storia = [];
   var formError = '';
   var saveState = 'idle';  // idle | pending | error
 
@@ -318,6 +318,7 @@ button:disabled{opacity:.6;cursor:default}
       '<button class="nav" data-act="next" aria-label="Mese successivo">›</button></header>' +
       '<div class="toprow"><button class="yr-btn" data-act="set-open">Impostazioni</button>' +
       (cur !== periodOf(new Date()) ? '<button class="yr-btn" data-act="today" aria-label="Torna al mese di oggi">Oggi</button>' : '') +
+      (storia.length ? '<button class="yr-btn" data-act="undo" aria-label="Annulla l\'ultima modifica">↶ Annulla</button>' : '') +
       '<button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
 
     h += debtHtml();
@@ -355,9 +356,6 @@ button:disabled{opacity:.6;cursor:default}
     var msg = '';
     if (saveState === 'pending') msg = 'Salvataggio…';
     else if (saveState === 'error') msg = 'Non riesco a salvare: controlla la connessione.';
-    if (lastDeleted) {
-      h += '<div class="undo" role="status"><span>Spesa eliminata.</span><button type="button" class="quiet" data-act="undo-trash">Annulla</button></div>';
-    }
     h += '<p class="status" role="status">' + esc(msg) + '</p>';
 
     app.innerHTML = h;
@@ -847,6 +845,7 @@ button:disabled{opacity:.6;cursor:default}
     else if (act === 'move-prev') {
       var mv = state.items.filter(function(i){ return i.id === editing; })[0];
       if (!mv) return;
+      storia.push({ t: 'sposta', id: mv.id, m: mv.m }); if (storia.length > 30) storia.shift();
       mv.m = shift(mv.m, -1);
       editing = null; formError = ''; armedDelete = false; schedule(); render();
     }
@@ -855,15 +854,22 @@ button:disabled{opacity:.6;cursor:default}
       var gone = state.items.filter(function(i){ return i.id === tid; })[0];
       if (!gone) return;
       state.items = state.items.filter(function(i){ return i.id !== tid; });
-      lastDeleted = gone;
-      clearTimeout(lastDeletedTimer);
-      lastDeletedTimer = setTimeout(function(){ lastDeleted = null; if (view === 'month' && !editing) render(); }, 6000);
+      storia.push({ t: 'elimina', item: gone }); if (storia.length > 30) storia.shift();
       schedule(); render();
     }
-    else if (act === 'undo-trash') {
-      if (lastDeleted) { state.items.push(lastDeleted); lastDeleted = null; clearTimeout(lastDeletedTimer); schedule(); render(); }
+    else if (act === 'undo') {
+      var az = storia.pop();
+      if (!az) return;
+      if (az.t === 'elimina') { state.items.push(az.item); cur = az.item.m; }
+      else if (az.t === 'sposta') {
+        var it2 = state.items.filter(function(i){ return i.id === az.id; })[0];
+        if (it2) { it2.m = az.m; cur = az.m; }
+      }
+      editing = null; schedule(); render();
     }
     else if (act === 'delete') {
+      var gone2 = state.items.filter(function(i){ return i.id === editing; })[0];
+      if (gone2) { storia.push({ t: 'elimina', item: gone2 }); if (storia.length > 30) storia.shift(); }
       state.items = state.items.filter(function(i){ return i.id !== editing; });
       editing = null; armedDelete = false; schedule(); render();
     }
