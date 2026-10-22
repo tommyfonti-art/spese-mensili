@@ -308,7 +308,9 @@ button:disabled{opacity:.6;cursor:default}
       '<button class="nav" data-act="prev" aria-label="Mese precedente">‹</button>' +
       '<div class="mid"><h1 class="month">' + esc(label(cur)) + '</h1><p class="sub">' + esc(range(cur)) + '</p></div>' +
       '<button class="nav" data-act="next" aria-label="Mese successivo">›</button></header>' +
-      '<div class="toprow"><button class="yr-btn" data-act="set-open">Impostazioni</button><button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
+      '<div class="toprow"><button class="yr-btn" data-act="set-open">Impostazioni</button>' +
+      (cur !== periodOf(new Date()) ? '<button class="yr-btn" data-act="today" aria-label="Torna al mese di oggi">Oggi</button>' : '') +
+      '<button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
 
     h += debtHtml();
     h += '<section class="totals" aria-label="Totali del mese">' +
@@ -820,6 +822,7 @@ button:disabled{opacity:.6;cursor:default}
       state.debts = state.debts.filter(function(d){ return d.id !== debtEditing; });
       debtEditing = null; armedDebt = false; debtOpen = false; schedule(); render();
     }
+    else if (act === 'today') setMonth(periodOf(new Date()));
     else if (act === 'prev') setMonth(shift(cur, -1));
     else if (act === 'next') setMonth(shift(cur, 1));
     else if (act === 'add') { newPay = t.getAttribute('data-pay') === 'contanti' ? 'contanti' : 'conto'; editing = 'new'; formError = ''; armedDelete = false; render(); }
