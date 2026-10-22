@@ -246,7 +246,7 @@ button:disabled{opacity:.6;cursor:default}
         '<button type="button" class="btn" data-act="cancel">Annulla</button>' +
         (isNew ? '' : '<button type="button" class="btn danger" data-act="delete">Elimina</button>') +
       '</div>' +
-      (isNew ? '' : '<button type="button" class="btn wide" data-act="move-prev">‹ Sposta al mese prima (' + esc(label(shift(cur, -1))) + ')</button>') +
+      (isNew ? '' : '<div class="actions"><button type="button" class="btn" data-act="move" data-d="-1">‹ Mese prima<br><small>' + esc(label(shift(cur, -1))) + '</small></button><button type="button" class="btn" data-act="move" data-d="1">Mese dopo ›<br><small>' + esc(label(shift(cur, 1))) + '</small></button></div>') +
       '</form>';
   }
 
@@ -842,11 +842,12 @@ button:disabled{opacity:.6;cursor:default}
       candidates().forEach(function(i){ state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
       schedule(); render();
     }
-    else if (act === 'move-prev') {
+    else if (act === 'move') {
+      var dd = parseInt(t.getAttribute('data-d'), 10) === 1 ? 1 : -1;
       var mv = state.items.filter(function(i){ return i.id === editing; })[0];
       if (!mv) return;
       storia.push({ t: 'sposta', id: mv.id, m: mv.m }); if (storia.length > 30) storia.shift();
-      mv.m = shift(mv.m, -1);
+      mv.m = shift(mv.m, dd);
       editing = null; formError = ''; armedDelete = false; schedule(); render();
     }
     else if (act === 'trash') {
