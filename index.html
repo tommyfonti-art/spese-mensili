@@ -1,4 +1,4 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#C79B22"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
+<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-10-24b"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#C79B22"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
 html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;}
 :root{
   --bg:#EFEFEF; --surface:#FFFFFF; --ink:#161616; --muted:#5F6266; --line:#D6D6D8;
@@ -958,4 +958,36 @@ button:disabled{opacity:.6;cursor:default}
 
   initStorage();
 })();
-</script><script>(function(){var b=function(e){e.preventDefault()};["gesturestart","gesturechange","gestureend"].forEach(function(n){document.addEventListener(n,b,{passive:false})});var t=0;document.addEventListener("touchend",function(e){var n=Date.now();if(n-t<350&&e.target.tagName!=="INPUT"&&e.target.tagName!=="TEXTAREA"&&e.target.tagName!=="SELECT"){e.preventDefault()}t=n},{passive:false});document.addEventListener("touchmove",function(e){if(e.touches.length>1)e.preventDefault()},{passive:false})})();</script></body></html>
+</script><script>(function(){var b=function(e){e.preventDefault()};["gesturestart","gesturechange","gestureend"].forEach(function(n){document.addEventListener(n,b,{passive:false})});var t=0;document.addEventListener("touchend",function(e){var n=Date.now();if(n-t<350&&e.target.tagName!=="INPUT"&&e.target.tagName!=="TEXTAREA"&&e.target.tagName!=="SELECT"){e.preventDefault()}t=n},{passive:false});document.addEventListener("touchmove",function(e){if(e.touches.length>1)e.preventDefault()},{passive:false})})();</script><script>
+/* aggiornamento automatico: se su GitHub c'è una versione nuova dell'app, la ricarico da sola.
+   La versione è nel tag <meta name="versione-app"> in alto: va cambiata a ogni modifica. */
+(function(){
+  try{
+    var mia = (document.querySelector('meta[name="versione-app"]')||{}).content;
+    if(!mia || !window.fetch || location.protocol.indexOf('http')!==0) return;
+    var inCorso = false;
+    function occupato(){ var a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); }
+    function controlla(){
+      if(inCorso || document.hidden) return;
+      inCorso = true;
+      fetch(location.pathname + '?c=' + Date.now(), { cache:'no-store' })
+        .then(function(r){ return r.ok ? r.text() : ''; })
+        .then(function(t){
+          inCorso = false;
+          var m = t && t.match(/<meta name="versione-app" content="([^"]+)"/);
+          if(!m || m[1] === mia) return;
+          if(occupato()) return;
+          var chiave = 'agg_' + m[1];
+          try{ if(sessionStorage.getItem(chiave)) return; sessionStorage.setItem(chiave, '1'); }catch(e){}
+          try{ window.dispatchEvent(new Event('pagehide')); }catch(e){}
+          setTimeout(function(){ location.replace(location.pathname + '?v=' + encodeURIComponent(m[1])); }, 500);
+        })
+        .catch(function(){ inCorso = false; });
+    }
+    setTimeout(controlla, 1500);
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(controlla, 700); });
+    setInterval(controlla, 300000);
+  }catch(e){}
+})();
+</script>
+</body></html>
