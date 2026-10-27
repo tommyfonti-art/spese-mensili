@@ -1,4 +1,4 @@
-<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-10-24b"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#C79B22"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
+<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-10-27a"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#C79B22"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
 html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;}
 :root{
   --bg:#EFEFEF; --surface:#FFFFFF; --ink:#161616; --muted:#5F6266; --line:#D6D6D8;
@@ -108,6 +108,10 @@ button{cursor:pointer}
 
 .form{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 8px);background:var(--surface);border:2px solid var(--primary);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .form label,.form legend{font-size:14px;font-weight:600;color:var(--muted)}
+[hidden]{display:none!important}
+.wd{font-weight:600;color:var(--muted)}
+.hint{margin:4px 0 0;font-size:13px;font-weight:600;color:var(--conto-text);min-height:17px}
+.hint.no{color:var(--danger)}
 .form select{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
 .form input[type=text],.form input[type=email],.form input[type=password]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:500;color:var(--ink)}
 .two{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
@@ -133,7 +137,7 @@ button:disabled{opacity:.6;cursor:default}
 </style></head><body><div id="app"></div><script id="main">
 (function(){
   var app = document.getElementById('app');
-  var state = { items: [], debts: [], salaries: {} };
+  var state = { items: [], debts: [], salaries: {}, weekly: [] };
 
   var MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   var MESI3 = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
@@ -178,7 +182,7 @@ button:disabled{opacity:.6;cursor:default}
     if (START === 1) return '1 ' + MESI3[m] + ' – fine ' + MESI3[m];
     return START + ' ' + MESI3[m] + ' – ' + (START - 1) + ' ' + MESI3[(m + 1) % 12];
   }
-  function statoVuoto(){ return { items: [], debts: [], salaries: {}, startDay: 1 }; }
+  function statoVuoto(){ return { items: [], debts: [], salaries: {}, weekly: [], startDay: 1 }; }
   function inizioValido(n){ return typeof n === 'number' && n >= 1 && n <= 28 && Math.floor(n) === n; }
   // legge dall'archivio il giorno di inizio del mese (chi non lo ha scelto mai ha l'11, come prima)
   function applicaInizio(){
@@ -201,6 +205,9 @@ button:disabled{opacity:.6;cursor:default}
     });
     state.startDay = nuovo;
     START = nuovo;
+    // le spese settimanali si rifanno con le nuove date del mese
+    state.items = state.items.filter(function(i){ return !i.r; });
+    (state.weekly || []).forEach(function(r){ r.done = {}; });
     cur = periodOf(new Date());
     try { sessionStorage.setItem('mese', cur); } catch(e) {}
     editing = null; debtEditing = null;
@@ -209,6 +216,44 @@ button:disabled{opacity:.6;cursor:default}
   function ord(day){ return day >= START ? day : day + 31; }
   function realMonth(k, day){ var m = +k.split('-')[1] - 1; return day >= START ? m : (m + 1) % 12; }
 
+  var GIORNI = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+  var MESI_LUNGHI = MESI.map(function(x){ return x.toLowerCase(); });
+  // data vera di un giorno dentro il mese k (con l'inizio scelto). Se il giorno non esiste in quel mese, torna null
+  function dataVera(k, day){
+    var p = k.split('-'), y = +p[0], m = +p[1] - 1;
+    if (day < START) { m++; if (m > 11) { m = 0; y++; } }
+    var d = new Date(y, m, day);
+    if (d.getMonth() !== m || d.getDate() !== day) return null;
+    return d;
+  }
+  // tutte le date del mese k che cadono nel giorno della settimana w (0 = domenica ... 6 = sabato)
+  function dateSettimanali(k, w){
+    var p = k.split('-'), y = +p[0], m = +p[1] - 1;
+    var d = new Date(y, m, START), fine = new Date(y, m + 1, START);
+    var out = [];
+    while (d < fine) { if (d.getDay() === w) out.push(new Date(d.getTime())); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+    return out;
+  }
+  // per ogni spesa che si ripete ogni settimana, mette nel mese k le sue date (una volta sola per mese)
+  function riempiSettimanali(k){
+    var cambiato = false;
+    (state.weekly || []).forEach(function(r){
+      if (!r.done) r.done = {};
+      if (k < r.from || r.done[k]) return;
+      r.done[k] = 1; cambiato = true;
+      dateSettimanali(k, r.w).forEach(function(d){
+        state.items.push({ id: newId(), m: k, name: r.name, amt: r.amt, day: d.getDate(), pay: r.pay, r: r.id });
+      });
+    });
+    return cambiato;
+  }
+  function frase(k, day){
+    var d = dataVera(k, day);
+    var p = k.split('-'), m = +p[1] - 1;
+    if (!d) { var mm = day < START ? (m + 1) % 12 : m; return { ok: false, t: 'Il ' + day + ' ' + MESI_LUNGHI[mm] + ' non esiste' }; }
+    return { ok: true, t: 'Il ' + d.getDate() + ' ' + MESI_LUNGHI[d.getMonth()] + ' è ' + GIORNI[d.getDay()] };
+  }
+
   function itemsOf(k){
     return state.items.filter(function(i){ return i.m === k; })
       .sort(function(a, b){ return (ord(a.day) - ord(b.day)) || a.name.localeCompare(b.name, 'it'); });
@@ -216,7 +261,7 @@ button:disabled{opacity:.6;cursor:default}
   function candidates(){
     var names = {};
     itemsOf(cur).forEach(function(i){ names[i.name.toLowerCase()] = 1; });
-    return itemsOf(shift(cur, -1)).filter(function(i){ return !names[i.name.toLowerCase()]; });
+    return itemsOf(shift(cur, -1)).filter(function(i){ return !i.r && !names[i.name.toLowerCase()]; });
   }
 
   function parseAmount(v){
@@ -234,8 +279,15 @@ button:disabled{opacity:.6;cursor:default}
       '<label>Nome<input type="text" name="name" autocomplete="off" placeholder="es. Mutuo" value="' + esc(it.name || '') + '"></label>' +
       '<div class="two">' +
         '<label>Importo (€)<input type="text" name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="' + (it.amt ? esc(String(it.amt).replace('.', ',')) : '') + '"></label>' +
-        '<label>Giorno di scadenza<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(it.day || '') + '"></label>' +
+        '<div data-once' + (it.rep === 'sett' ? ' hidden' : '') + '><label>Giorno di scadenza<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(it.day || '') + '"></label></div>' +
+        '<div data-week' + (it.rep === 'sett' ? '' : ' hidden') + '><label>Che giorno<select name="wd">' + [1,2,3,4,5,6,0].map(function(g){ return '<option value="' + g + '"' + (g === (it.wd == null ? 1 : it.wd) ? ' selected' : '') + '>' + GIORNI[g] + '</option>'; }).join('') + '</select></label></div>' +
       '</div>' +
+      '<p class="hint" data-hint aria-live="polite"' + (it.rep === 'sett' ? ' hidden' : '') + '>' + (it.day ? esc(frase(cur, +it.day).t) : '') + '</p>' +
+      (isNew ? '<fieldset><legend>Quanto spesso</legend><div class="segs">' +
+        '<label class="seg"><input type="radio" name="rep" value="una"' + (it.rep === 'sett' ? '' : ' checked') + '><span>Una volta</span></label>' +
+        '<label class="seg"><input type="radio" name="rep" value="sett"' + (it.rep === 'sett' ? ' checked' : '') + '><span>Ogni settimana</span></label>' +
+      '</div></fieldset>' : '') +
+      (it.r ? '<p class="note">Questa spesa si ripete ogni settimana. Le modifiche valgono solo per questa data.</p>' : '') +
       '<fieldset><legend>Come si paga</legend><div class="segs">' +
         '<label class="seg"><input type="radio" name="pay" value="conto"' + (it.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
         '<label class="seg c"><input type="radio" name="pay" value="contanti"' + (it.pay === 'contanti' ? ' checked' : '') + '><span>Contanti</span></label>' +
@@ -246,6 +298,7 @@ button:disabled{opacity:.6;cursor:default}
         '<button type="button" class="btn" data-act="cancel">Annulla</button>' +
         (isNew ? '' : '<button type="button" class="btn danger" data-act="delete">Elimina</button>') +
       '</div>' +
+      (it.r ? '<div class="actions"><button type="button" class="btn danger" data-act="stop-rep">Ferma la ripetizione da questa data in poi</button></div>' : '') +
       (isNew ? '' : '<div class="actions"><button type="button" class="btn" data-act="move" data-d="-1">‹ Mese prima<br><small>' + esc(label(shift(cur, -1))) + '</small></button><button type="button" class="btn" data-act="move" data-d="1">Mese dopo ›<br><small>' + esc(label(shift(cur, 1))) + '</small></button></div>') +
       '</form>';
   }
@@ -306,6 +359,7 @@ button:disabled{opacity:.6;cursor:default}
       app.innerHTML = h2;
       return;
     }
+    if (riempiSettimanali(cur)) schedule();
     var items = itemsOf(cur);
     var conto = 0, cont = 0, nConto = 0, nCont = 0;
     items.forEach(function(i){
@@ -338,13 +392,13 @@ button:disabled{opacity:.6;cursor:default}
         var isCont = i.pay === 'contanti';
         if (editing === i.id) { h += '<li>' + formHtml(i) + '</li>'; return; }
         h += '<li class="item"><button class="row" data-act="edit" data-id="' + esc(i.id) + '">' +
-          '<span class="day ' + (isCont ? 'cont' : 'conto') + '" aria-label="Giorno ' + i.day + ' ' + MESI3[realMonth(cur, i.day)] + '"><span class="dm">' + MESI3[realMonth(cur, i.day)] + '</span><span class="dn">' + i.day + '</span></span>' +
-          '<span><span class="name">' + esc(i.name) + '</span><span class="meta" style="display:block"><span class="tag ' + (isCont ? 'cont' : 'conto') + '">' + (isCont ? 'Contanti' : 'Banca') + '</span></span></span>' +
+          '<span class="day ' + (isCont ? 'cont' : 'conto') + '" aria-label="' + esc(frase(cur, i.day).t) + '"><span class="dm">' + MESI3[realMonth(cur, i.day)] + '</span><span class="dn">' + i.day + '</span></span>' +
+          '<span><span class="name">' + esc(i.name) + '</span><span class="meta" style="display:block"><span class="tag ' + (isCont ? 'cont' : 'conto') + '">' + (isCont ? 'Contanti' : 'Banca') + '</span>' + (dataVera(cur, i.day) ? ' <span class="wd">· ' + GIORNI[dataVera(cur, i.day).getDay()] + '</span>' : '') + '</span></span>' +
           '<span class="amt">' + eur(i.amt) + '</span></button>' +
           '<button type="button" class="trash" data-act="trash" data-id="' + esc(i.id) + '" aria-label="Elimina ' + esc(i.name) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg></button></li>';
       });
       if (editing === 'new') {
-                h += '<li>' + formHtml({ day: '', pay: newPay }) + '</li>';
+                h += '<li>' + formHtml({ day: '', pay: newPay, rep: 'una' }) + '</li>';
       }
       h += '</ul>';
     }
@@ -593,6 +647,7 @@ button:disabled{opacity:.6;cursor:default}
           if(parsed && typeof parsed === 'object' && Array.isArray(parsed.items)){
             if (!Array.isArray(parsed.debts)) parsed.debts = [];
             if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
+            if (!Array.isArray(parsed.weekly)) parsed.weekly = [];
             if (!inizioValido(parsed.startDay)) parsed.startDay = 11;
             state = parsed;
             applicaInizio();
@@ -860,7 +915,7 @@ button:disabled{opacity:.6;cursor:default}
     else if (act === 'edit') { editing = t.getAttribute('data-id'); formError = ''; armedDelete = false; render(); }
     else if (act === 'cancel') { editing = null; formError = ''; armedDelete = false; render(); }
     else if (act === 'copy') {
-      candidates().forEach(function(i){ state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
+      candidates().forEach(function(i){ if (i.r) return; state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
       schedule(); render();
     }
     else if (act === 'move') {
@@ -888,6 +943,14 @@ button:disabled{opacity:.6;cursor:default}
         if (it2) { it2.m = az.m; cur = az.m; }
       }
       editing = null; schedule(); render();
+    }
+    else if (act === 'stop-rep') {
+      var cu = state.items.filter(function(i){ return i.id === editing; })[0];
+      if (!cu || !cu.r) return;
+      var rid = cu.r, mo = cu.m, oo = ord(cu.day);
+      state.weekly = (state.weekly || []).filter(function(r){ return r.id !== rid; });
+      state.items = state.items.filter(function(i){ return !(i.r === rid && (i.m > mo || (i.m === mo && ord(i.day) >= oo))); });
+      editing = null; armedDelete = false; schedule(); render();
     }
     else if (act === 'delete') {
       var gone2 = state.items.filter(function(i){ return i.id === editing; })[0];
@@ -933,9 +996,12 @@ button:disabled{opacity:.6;cursor:default}
     var amt = parseAmount(f.elements.amt.value);
     var day = parseInt(f.elements.day.value, 10);
     var pay = f.elements.pay.value === 'contanti' ? 'contanti' : 'conto';
+    var sett = editing === 'new' && f.elements.rep && f.elements.rep.value === 'sett';
+    var wd = parseInt(f.elements.wd.value, 10);
     if (!name) formError = 'Scrivi il nome della spesa.';
     else if (!(amt > 0)) formError = 'Scrivi un importo, ad esempio 450,00.';
-    else if (!(day >= 1 && day <= 31)) formError = 'Il giorno deve essere tra 1 e 31.';
+    else if (!sett && !(day >= 1 && day <= 31)) formError = 'Il giorno deve essere tra 1 e 31.';
+    else if (!sett && !dataVera(cur, day) && (editing === 'new' || !state.items.some(function(i){ return i.id === editing && i.day === day; }))) formError = frase(cur, day).t + ': scegli un altro giorno.';
     else formError = '';
     if (formError) {
       var rawAmt = f.elements.amt.value, rawDay = f.elements.day.value;
@@ -944,10 +1010,16 @@ button:disabled{opacity:.6;cursor:default}
       if (ff) {
         ff.elements.name.value = name; ff.elements.amt.value = rawAmt; ff.elements.day.value = rawDay;
         ff.querySelector('input[value=' + pay + ']').checked = true;
+        if (sett && ff.elements.rep) { ff.querySelector('input[name=rep][value=sett]').checked = true; ff.elements.wd.value = String(wd); }
+        mostraAvviso(ff);
       }
       return;
     }
-    if (editing === 'new') {
+    if (sett) {
+      var rid2 = newId();
+      state.weekly.push({ id: rid2, name: name, amt: amt, pay: pay, w: wd, from: cur, done: {} });
+      riempiSettimanali(cur);
+    } else if (editing === 'new') {
       state.items.push({ id: newId(), m: cur, name: name, amt: amt, day: day, pay: pay });
     } else {
       state.items.forEach(function(i){ if (i.id === editing) { i.name = name; i.amt = amt; i.day = day; i.pay = pay; } });
@@ -955,6 +1027,20 @@ button:disabled{opacity:.6;cursor:default}
     editing = null; armedDelete = false;
     schedule(); render();
   });
+
+  // mostra/nasconde giorno o giorno della settimana e scrive che giorno è la data digitata
+  function mostraAvviso(form){
+    var sett = form.elements.rep && form.elements.rep.value === 'sett';
+    var a = form.querySelector('[data-once]'), b = form.querySelector('[data-week]'), h = form.querySelector('[data-hint]');
+    if (!a || !b || !h) return;
+    a.hidden = !!sett; b.hidden = !sett; h.hidden = !!sett;
+    var v = parseInt(form.elements.day.value, 10);
+    if (sett || !(v >= 1 && v <= 31)) { h.textContent = ''; h.className = 'hint'; return; }
+    var fr = frase(cur, v);
+    h.textContent = fr.t; h.className = 'hint' + (fr.ok ? '' : ' no');
+  }
+  app.addEventListener('input', function(ev){ var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm); });
+  app.addEventListener('change', function(ev){ var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm); });
 
   initStorage();
 })();
