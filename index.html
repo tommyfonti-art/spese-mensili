@@ -1,4 +1,4 @@
-<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-10-27a"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#C79B22"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
+<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-11-05a"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#C79B22"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap"><style id="css">
 html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;}
 :root{
   --bg:#EFEFEF; --surface:#FFFFFF; --ink:#161616; --muted:#5F6266; --line:#D6D6D8;
@@ -132,12 +132,23 @@ fieldset{border:0;margin:0;padding:0}
 .okm{margin:0;color:var(--conto-text);font-size:14px;font-weight:600}
 .sect{margin:18px 0 0}
 .sect h2{font-family:var(--display);font-weight:700;font-size:18px;margin:0 0 8px}
-.toprow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.toprow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0 8px}
+.segs.tre{grid-template-columns:1fr 1fr 1fr}
+.segs.tre .seg span{font-size:13px;padding:11px 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{border:1px solid var(--conto);background:var(--conto-soft);color:var(--conto-text);border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;min-height:40px}
+.rigaf{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.passi{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.rec-row{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:48px}
+.rec-row .rn{display:flex;flex-direction:column}
+.rec-row .rn b{font-weight:600;font-size:15px;overflow-wrap:anywhere}
+.rec-row .rn span{font-size:12px;color:var(--muted)}
+.rec-row .ra{font-family:var(--display);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
 button:disabled{opacity:.6;cursor:default}
 </style></head><body><div id="app"></div><script id="main">
 (function(){
   var app = document.getElementById('app');
-  var state = { items: [], debts: [], salaries: {}, weekly: [] };
+  var state = { items: [], debts: [], salaries: {}, weekly: [], monthly: [] };
 
   var MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   var MESI3 = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
@@ -165,6 +176,11 @@ button:disabled{opacity:.6;cursor:default}
   var storia = [];
   var formError = '';
   var saveState = 'idle';  // idle | pending | error
+  var recEditing = null;   // null | 'new' | id  (spese ricorrenti ogni mese)
+  var recError = '';
+  var armedRec = false;
+  var guida = null;        // null | { passo, giorno, righe, finali, err }
+  var guidaChiusa = false; // la guida è stata chiusa in questa sessione
 
   function setMonth(k){
     cur = k; editing = null; armedDelete = false; formError = '';
@@ -182,7 +198,7 @@ button:disabled{opacity:.6;cursor:default}
     if (START === 1) return '1 ' + MESI3[m] + ' – fine ' + MESI3[m];
     return START + ' ' + MESI3[m] + ' – ' + (START - 1) + ' ' + MESI3[(m + 1) % 12];
   }
-  function statoVuoto(){ return { items: [], debts: [], salaries: {}, weekly: [], startDay: 1 }; }
+  function statoVuoto(){ return { items: [], debts: [], salaries: {}, weekly: [], monthly: [], startDay: 1 }; }
   function inizioValido(n){ return typeof n === 'number' && n >= 1 && n <= 28 && Math.floor(n) === n; }
   // legge dall'archivio il giorno di inizio del mese (chi non lo ha scelto mai ha l'11, come prima)
   function applicaInizio(){
@@ -208,6 +224,13 @@ button:disabled{opacity:.6;cursor:default}
     // le spese settimanali si rifanno con le nuove date del mese
     state.items = state.items.filter(function(i){ return !i.r; });
     (state.weekly || []).forEach(function(r){ r.done = {}; });
+    // le ricorrenti mensili restano dove sono: i mesi fino a oggi si considerano già fatti, quelli futuri si riempiono da soli
+    var oggiP = periodOf(new Date());
+    (state.monthly || []).forEach(function(r){
+      r.done = {};
+      var kk = r.from, n = 0;
+      while (kk <= oggiP && n < 600) { r.done[kk] = 1; kk = shift(kk, 1); n++; }
+    });
     cur = periodOf(new Date());
     try { sessionStorage.setItem('mese', cur); } catch(e) {}
     editing = null; debtEditing = null;
@@ -247,6 +270,21 @@ button:disabled{opacity:.6;cursor:default}
     });
     return cambiato;
   }
+  // se il giorno non esiste nel mese (es. 31 in un mese da 30 giorni) vale l'ultimo giorno del mese
+  function giornoPer(k, day){ var g = day; while (g > 28 && !dataVera(k, g)) g--; return g; }
+  // per ogni spesa che si ripete ogni mese, mette nel mese k la sua voce (una volta sola per mese)
+  function riempiMensili(k){
+    var cambiato = false;
+    (state.monthly || []).forEach(function(r){
+      if (!r.done) r.done = {};
+      if (k < r.from || r.done[k]) return;
+      r.done[k] = 1; cambiato = true;
+      if (state.items.some(function(i){ return i.rm === r.id && i.m === k; })) return;
+      state.items.push({ id: newId(), m: k, name: r.name, amt: r.amt, day: giornoPer(k, r.day), pay: r.pay, rm: r.id });
+    });
+    return cambiato;
+  }
+  function esisteMensile(id){ return (state.monthly || []).some(function(r){ return r.id === id; }); }
   function frase(k, day){
     var d = dataVera(k, day);
     var p = k.split('-'), m = +p[1] - 1;
@@ -261,7 +299,7 @@ button:disabled{opacity:.6;cursor:default}
   function candidates(){
     var names = {};
     itemsOf(cur).forEach(function(i){ names[i.name.toLowerCase()] = 1; });
-    return itemsOf(shift(cur, -1)).filter(function(i){ return !i.r && !names[i.name.toLowerCase()]; });
+    return itemsOf(shift(cur, -1)).filter(function(i){ return !i.r && !i.rm && !names[i.name.toLowerCase()]; });
   }
 
   function parseAmount(v){
@@ -283,11 +321,13 @@ button:disabled{opacity:.6;cursor:default}
         '<div data-week' + (it.rep === 'sett' ? '' : ' hidden') + '><label>Che giorno<select name="wd">' + [1,2,3,4,5,6,0].map(function(g){ return '<option value="' + g + '"' + (g === (it.wd == null ? 1 : it.wd) ? ' selected' : '') + '>' + GIORNI[g] + '</option>'; }).join('') + '</select></label></div>' +
       '</div>' +
       '<p class="hint" data-hint aria-live="polite"' + (it.rep === 'sett' ? ' hidden' : '') + '>' + (it.day ? esc(frase(cur, +it.day).t) : '') + '</p>' +
-      (isNew ? '<fieldset><legend>Quanto spesso</legend><div class="segs">' +
-        '<label class="seg"><input type="radio" name="rep" value="una"' + (it.rep === 'sett' ? '' : ' checked') + '><span>Una volta</span></label>' +
+      (isNew ? '<fieldset><legend>Quanto spesso</legend><div class="segs tre">' +
+        '<label class="seg"><input type="radio" name="rep" value="una"' + (it.rep === 'sett' || it.rep === 'mese' ? '' : ' checked') + '><span>Una volta</span></label>' +
         '<label class="seg"><input type="radio" name="rep" value="sett"' + (it.rep === 'sett' ? ' checked' : '') + '><span>Ogni settimana</span></label>' +
+        '<label class="seg"><input type="radio" name="rep" value="mese"' + (it.rep === 'mese' ? ' checked' : '') + '><span>Ogni mese</span></label>' +
       '</div></fieldset>' : '') +
       (it.r ? '<p class="note">Questa spesa si ripete ogni settimana. Le modifiche valgono solo per questa data.</p>' : '') +
+      (it.rm && esisteMensile(it.rm) ? '<p class="note">Questa spesa si ripete ogni mese. Le modifiche valgono solo per questo mese: per cambiarla sempre usa «Ricorrenti».</p>' : '') +
       '<fieldset><legend>Come si paga</legend><div class="segs">' +
         '<label class="seg"><input type="radio" name="pay" value="conto"' + (it.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
         '<label class="seg c"><input type="radio" name="pay" value="contanti"' + (it.pay === 'contanti' ? ' checked' : '') + '><span>Contanti</span></label>' +
@@ -299,6 +339,7 @@ button:disabled{opacity:.6;cursor:default}
         (isNew ? '' : '<button type="button" class="btn danger" data-act="delete">Elimina</button>') +
       '</div>' +
       (it.r ? '<div class="actions"><button type="button" class="btn danger" data-act="stop-rep">Ferma la ripetizione da questa data in poi</button></div>' : '') +
+      (it.rm && esisteMensile(it.rm) ? '<div class="actions"><button type="button" class="btn danger" data-act="stop-rep">Ferma la ripetizione da questo mese in poi</button></div>' : '') +
       (isNew ? '' : '<div class="actions"><button type="button" class="btn" data-act="move" data-d="-1">‹ Mese prima<br><small>' + esc(label(shift(cur, -1))) + '</small></button><button type="button" class="btn" data-act="move" data-d="1">Mese dopo ›<br><small>' + esc(label(shift(cur, 1))) + '</small></button></div>') +
       '</form>';
   }
@@ -338,6 +379,7 @@ button:disabled{opacity:.6;cursor:default}
     var h = '';
     for (var i = 0; i < 12; i++) {
       var k = i === 0 ? cur : shift(cur, i);
+      if (riempiMensili(k) | riempiSettimanali(k)) schedule();
       var tot = 0;
       itemsOf(k).forEach(function(it){ tot += it.amt; });
       h += '<li><button class="yr-row' + (k === cur ? ' cur' : '') + '" data-act="yr-pick" data-k="' + esc(k) + '">' +
@@ -349,7 +391,9 @@ button:disabled{opacity:.6;cursor:default}
 
   function render(){
     if (!sessione) { renderAccesso(); return; }
+    if (guida) { renderGuida(); return; }
     if (view === 'impostazioni') { renderImpostazioni(); return; }
+    if (view === 'ricorrenti') { renderRicorrenti(); return; }
     if (view === 'year') {
       var h2 = '<header class="top">' +
         '<div class="mid"><h1 class="month">Prossimi 12 mesi</h1><p class="sub">Quanto hai già segnato per ognuno</p></div>' +
@@ -359,7 +403,7 @@ button:disabled{opacity:.6;cursor:default}
       app.innerHTML = h2;
       return;
     }
-    if (riempiSettimanali(cur)) schedule();
+    if (riempiSettimanali(cur) | riempiMensili(cur)) schedule();
     var items = itemsOf(cur);
     var conto = 0, cont = 0, nConto = 0, nCont = 0;
     items.forEach(function(i){
@@ -371,6 +415,7 @@ button:disabled{opacity:.6;cursor:default}
       '<div class="mid"><h1 class="month">' + esc(label(cur)) + '</h1><p class="sub">' + esc(range(cur)) + '</p></div>' +
       '<button class="nav" data-act="next" aria-label="Mese successivo">›</button></header>' +
       '<div class="toprow"><button class="yr-btn" data-act="set-open">Impostazioni</button>' +
+      '<button class="yr-btn" data-act="rec-open">Ricorrenti</button>' +
       (cur !== periodOf(new Date()) ? '<button class="yr-btn" data-act="today" aria-label="Torna al mese di oggi">Oggi</button>' : '') +
       (storia.length ? '<button class="yr-btn" data-act="undo" aria-label="Annulla l\'ultima modifica">↶ Annulla</button>' : '') +
       '<button class="yr-btn" data-act="view-year">Vista anno ›</button></div>';
@@ -393,7 +438,7 @@ button:disabled{opacity:.6;cursor:default}
         if (editing === i.id) { h += '<li>' + formHtml(i) + '</li>'; return; }
         h += '<li class="item"><button class="row" data-act="edit" data-id="' + esc(i.id) + '">' +
           '<span class="day ' + (isCont ? 'cont' : 'conto') + '" aria-label="' + esc(frase(cur, i.day).t) + '"><span class="dm">' + MESI3[realMonth(cur, i.day)] + '</span><span class="dn">' + i.day + '</span></span>' +
-          '<span><span class="name">' + esc(i.name) + '</span><span class="meta" style="display:block"><span class="tag ' + (isCont ? 'cont' : 'conto') + '">' + (isCont ? 'Contanti' : 'Banca') + '</span>' + (dataVera(cur, i.day) ? ' <span class="wd">· ' + GIORNI[dataVera(cur, i.day).getDay()] + '</span>' : '') + '</span></span>' +
+          '<span><span class="name">' + esc(i.name) + '</span><span class="meta" style="display:block"><span class="tag ' + (isCont ? 'cont' : 'conto') + '">' + (isCont ? 'Contanti' : 'Banca') + '</span>' + (dataVera(cur, i.day) ? ' <span class="wd">· ' + GIORNI[dataVera(cur, i.day).getDay()] + '</span>' : '') + (i.rm && esisteMensile(i.rm) ? ' <span class="wd">· ogni mese</span>' : '') + '</span></span>' +
           '<span class="amt">' + eur(i.amt) + '</span></button>' +
           '<button type="button" class="trash" data-act="trash" data-id="' + esc(i.id) + '" aria-label="Elimina ' + esc(i.name) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg></button></li>';
       });
@@ -619,7 +664,7 @@ button:disabled{opacity:.6;cursor:default}
     clearTimeout(pubTimer);
     pubTimer = null;
     if (!sessione) return;
-    if (editing || debtEditing || migrazioneInSospeso) { pubTimer = setTimeout(flush, 1400); return; }
+    if (editing || debtEditing || guida || recEditing || migrazioneInSospeso) { pubTimer = setTimeout(flush, 1400); return; }
     if(!pendingSave) return;
     pendingSave = false;
     var payload = { fields: { json: { stringValue: JSON.stringify(state) } } };
@@ -648,9 +693,11 @@ button:disabled{opacity:.6;cursor:default}
             if (!Array.isArray(parsed.debts)) parsed.debts = [];
             if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
             if (!Array.isArray(parsed.weekly)) parsed.weekly = [];
+            if (!Array.isArray(parsed.monthly)) parsed.monthly = [];
             if (!inizioValido(parsed.startDay)) parsed.startDay = 11;
             state = parsed;
             applicaInizio();
+            controllaGuida();
             render();
           }
         }catch(e){ /* ignore */ }
@@ -659,7 +706,8 @@ button:disabled{opacity:.6;cursor:default}
       if(err && err.code === 'not-found'){
         // account nuovo, ancora senza spese: parte vuoto. Solo con ?importa=1 si portano qui i vecchi dati del proprietario
         if(VUOLE_IMPORTARE && !importTentato) importaVecchi();
-        else if (state.items.length === 0 && !inizioValido(state.startDay)) { state.startDay = 1; applicaInizio(); render(); }
+        else if (state.items.length === 0 && !inizioValido(state.startDay)) { state.startDay = 1; applicaInizio(); controllaGuida(); render(); }
+        else { controllaGuida(); if (guida) render(); }
         return;
       }
       if (sessione && saveState === 'idle') { saveState = 'error'; render(); }
@@ -678,6 +726,8 @@ button:disabled{opacity:.6;cursor:default}
       var po = raw ? JSON.parse(raw) : null;
       if(!po || typeof po !== 'object' || !Array.isArray(po.items)){ var ef = new Error('formato'); ef.code = 'formato'; throw ef; }
       if (!Array.isArray(po.debts)) po.debts = [];
+      if (!Array.isArray(po.weekly)) po.weekly = [];
+      if (!Array.isArray(po.monthly)) po.monthly = [];
       if (!po.salaries || typeof po.salaries !== 'object') po.salaries = {};
       var ids = {}; po.items.forEach(function(i){ ids[i.id] = true; });
       var idd = {}; po.debts.forEach(function(d){ idd[d.id] = true; });
@@ -788,6 +838,7 @@ button:disabled{opacity:.6;cursor:default}
       '<label>Il mio mese comincia il giorno<select name="giorno">' + opz + '</select></label>' +
       '<p class="note">Ora il mese in corso va: ' + esc(range(periodOf(new Date()))) + '</p>' + msgHtml('inizio') +
       '<div class="actions"><button type="submit" class="btn primary">Salva</button></div></form></section>';
+    h += '<section class="sect"><h2>Guida iniziale</h2><p class="sub" style="margin:0 0 8px">Rifai i passaggi per scegliere l\'inizio del mese e le spese fisse.</p><button class="btn wide" data-act="g-riapri">Apri la guida</button></section>';
     h += '<section class="sect"><h2>Cambia password</h2><form class="form" data-cambia novalidate>' +
       '<label>Password attuale<input type="password" name="vecchia" autocomplete="current-password"></label>' +
       '<label>Nuova password<input type="password" name="nuova" autocomplete="new-password"></label>' +
@@ -860,6 +911,214 @@ button:disabled{opacity:.6;cursor:default}
     });
   }
 
+  // ---- spese ricorrenti ogni mese: si gestiscono qui ----
+  var GIORNI_SETT = GIORNI;
+  function recForm(r){
+    return '<form class="form" data-rec-form novalidate>' +
+      '<label>Nome<input type="text" name="name" autocomplete="off" placeholder="es. Mutuo" value="' + esc(r.name || '') + '"></label>' +
+      '<div class="two">' +
+        '<label>Importo (€)<input type="text" name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="' + (r.amt ? esc(String(r.amt).replace('.', ',')) : '') + '"></label>' +
+        '<label>Giorno del mese<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(r.day || '') + '"></label>' +
+      '</div>' +
+      '<p class="note">Se in un mese quel giorno non c\'è (per esempio il 31), la spesa va all\'ultimo giorno del mese.</p>' +
+      '<fieldset><legend>Come si paga</legend><div class="segs">' +
+        '<label class="seg"><input type="radio" name="pay" value="conto"' + (r.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
+        '<label class="seg c"><input type="radio" name="pay" value="contanti"' + (r.pay === 'contanti' ? ' checked' : '') + '><span>Contanti</span></label>' +
+      '</div></fieldset>' +
+      (r.id ? '<p class="note">Le modifiche valgono dal mese in corso in poi. I mesi passati restano come sono.</p>' : '') +
+      (recError ? '<p class="err" role="alert">' + esc(recError) + '</p>' : '') +
+      '<div class="actions"><button type="submit" class="btn primary">Salva</button>' +
+      '<button type="button" class="btn" data-act="rec-cancel">Annulla</button>' +
+      (r.id ? '<button type="button" class="btn danger" data-act="rec-delete">' + (armedRec ? 'Sicuro? Tocca ancora' : 'Elimina') + '</button>' : '') +
+      '</div></form>';
+  }
+  function renderRicorrenti(){
+    var h = '<header class="top"><div class="mid"><h1 class="month">Spese ricorrenti</h1><p class="sub">Tornano da sole ogni mese</p></div></header>' +
+      '<button class="yr-btn" data-act="rec-back">‹ Torna alle spese</button>';
+    h += '<section class="sect"><h2>Ogni mese</h2><ul class="list">';
+    var mens = (state.monthly || []).slice().sort(function(a, b){ return (ord(a.day) - ord(b.day)) || a.name.localeCompare(b.name, 'it'); });
+    mens.forEach(function(r){
+      if (recEditing === r.id) { h += '<li>' + recForm(r) + '</li>'; return; }
+      h += '<li><button class="rec-row" data-act="rec-edit" data-id="' + esc(r.id) + '"><span class="rn"><b>' + esc(r.name) + '</b><span>il ' + r.day + ' di ogni mese · ' + (r.pay === 'contanti' ? 'Contanti' : 'Banca') + '</span></span><span class="ra">' + eur(r.amt) + '</span></button></li>';
+    });
+    if (recEditing === 'new') h += '<li>' + recForm({ pay: 'conto' }) + '</li>';
+    h += '</ul>';
+    if (!mens.length && recEditing !== 'new') h += '<div class="empty"><p>Non hai ancora spese ricorrenti. Aggiungi per esempio il mutuo, l\'affitto o le bollette: ogni mese le trovi già inserite.</p></div>';
+    if (recEditing !== 'new') h += '<div class="more"><button class="btn wide" data-act="rec-add">Aggiungi una spesa ricorrente</button></div>';
+    h += '</section>';
+    var sett = state.weekly || [];
+    if (sett.length) {
+      h += '<section class="sect"><h2>Ogni settimana</h2><ul class="list">';
+      sett.forEach(function(r){
+        h += '<li class="item"><div class="rec-row" style="flex:1"><span class="rn"><b>' + esc(r.name) + '</b><span>ogni ' + GIORNI_SETT[r.w] + ' · ' + (r.pay === 'contanti' ? 'Contanti' : 'Banca') + '</span></span><span class="ra">' + eur(r.amt) + '</span></div>' +
+          '<button type="button" class="trash" data-act="rec-stop-w" data-id="' + esc(r.id) + '" aria-label="Ferma ' + esc(r.name) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg></button></li>';
+      });
+      h += '</ul><p class="note" style="margin-top:8px">Il cestino ferma la ripetizione da questo mese in poi.</p></section>';
+    }
+    app.innerHTML = h;
+    var f = app.querySelector('[data-rec-form] input[name=name]');
+    if (f) { try { f.focus({ preventScroll: true }); } catch(e) { f.focus(); } var fm = f.closest('form'); setTimeout(function(){ if (fm.isConnected) fm.scrollIntoView({ block: 'start' }); }, 120); }
+  }
+  function salvaRicorrente(form){
+    var name = form.elements.name.value.trim(), rawA = form.elements.amt.value, amt = parseAmount(rawA);
+    var rawD = form.elements.day.value, day = parseInt(rawD, 10);
+    var pay = form.elements.pay.value === 'contanti' ? 'contanti' : 'conto';
+    if (!name) recError = 'Scrivi il nome della spesa.';
+    else if (!(amt > 0)) recError = 'Scrivi un importo, ad esempio 450,00.';
+    else if (!(day >= 1 && day <= 31)) recError = 'Il giorno deve essere tra 1 e 31.';
+    else recError = '';
+    if (recError) {
+      render();
+      var f2 = app.querySelector('[data-rec-form]');
+      if (f2) { f2.elements.name.value = name; f2.elements.amt.value = rawA; f2.elements.day.value = rawD; f2.querySelector('input[value=' + pay + ']').checked = true; }
+      return;
+    }
+    var oggiP = periodOf(new Date());
+    if (!state.monthly) state.monthly = [];
+    if (recEditing === 'new') {
+      state.monthly.push({ id: newId(), name: name, amt: amt, day: day, pay: pay, from: oggiP, done: {} });
+    } else {
+      var id = recEditing;
+      state.monthly.forEach(function(r){ if (r.id === id) { r.name = name; r.amt = amt; r.day = day; r.pay = pay; } });
+      // le voci dal mese in corso in poi prendono i nuovi dati
+      state.items.forEach(function(i){
+        if (i.rm === id && i.m >= oggiP) { i.name = name; i.amt = amt; i.pay = pay; i.day = giornoPer(i.m, day); }
+      });
+    }
+    recEditing = null; armedRec = false; recError = '';
+    schedule(); render();
+  }
+  function eliminaRicorrente(){
+    var id = recEditing, oggiP = periodOf(new Date());
+    state.monthly = (state.monthly || []).filter(function(r){ return r.id !== id; });
+    state.items = state.items.filter(function(i){ return !(i.rm === id && i.m >= oggiP); });
+    recEditing = null; armedRec = false; recError = '';
+    schedule(); render();
+  }
+
+  // ---- primo avvio guidato ----
+  var SUGGERITE = ['Mutuo', 'Affitto', 'Bollette', 'Luce', 'Gas', 'Acqua', 'Internet', 'Telefono', 'Assicurazione auto'];
+  function guidaDaMostrare(){
+    return !guidaChiusa && state.guidaFatta !== true && !state.items.length && !(state.weekly || []).length &&
+      !(state.monthly || []).length && !(state.debts || []).length;
+  }
+  function controllaGuida(){
+    if (guida || !sessione || !guidaDaMostrare()) return;
+    guida = { passo: 0, giorno: START, righe: [], finali: [], err: '' };
+  }
+  function riapriGuida(){
+    guida = { passo: 0, giorno: START, righe: [], finali: [], err: '' };
+    guidaChiusa = false; view = 'month'; editing = null; debtEditing = null; recEditing = null;
+    render();
+  }
+  function anteprimaMese(g){
+    var s0 = START; START = g;
+    var t = range(periodOf(new Date()));
+    START = s0;
+    return t;
+  }
+  function rigaGuida(r){
+    return '<div class="rigaf" data-riga="' + esc(r.id) + '">' +
+      '<label>Nome<input type="text" name="name" autocomplete="off" placeholder="es. Mutuo" value="' + esc(r.name || '') + '"></label>' +
+      '<div class="two"><label>Importo (€)<input type="text" name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="' + esc(r.amt || '') + '"></label>' +
+      '<label>Giorno del mese<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(r.day || '') + '"></label></div>' +
+      '<div class="segs"><label class="seg"><input type="radio" name="pay-' + esc(r.id) + '" value="conto"' + (r.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
+      '<label class="seg c"><input type="radio" name="pay-' + esc(r.id) + '" value="contanti"' + (r.pay === 'contanti' ? ' checked' : '') + '><span>Contanti</span></label></div>' +
+      '<button type="button" class="quiet" data-act="g-togli" data-id="' + esc(r.id) + '">Togli questa spesa</button></div>';
+  }
+  function renderGuida(){
+    var g = guida, h = '';
+    var titoli = ['Benvenuto', 'Quando comincia il tuo mese', 'Le tue spese fisse', 'Tutto pronto'];
+    h += '<header class="top"><div class="mid"><h1 class="month">' + esc(titoli[g.passo]) + '</h1><p class="sub">' + (g.passo === 0 ? 'Ci vogliono due minuti' : 'Passo ' + g.passo + ' di 3') + '</p></div></header>';
+    if (g.passo === 0) {
+      h += '<form class="form" data-guida novalidate><h2 class="auth-t">Prepariamo l\'app insieme</h2>' +
+        '<ol class="passi"><li>Scegli da che giorno comincia il tuo mese.</li><li>Segna le spese che tornano ogni mese, come mutuo, affitto e bollette.</li><li>Fatto: ogni mese le ritrovi già inserite.</li></ol>' +
+        '<p class="note">Puoi cambiare tutto quando vuoi, dalle Impostazioni e da «Ricorrenti».</p>' +
+        '<div class="actions"><button type="submit" class="btn primary">Cominciamo</button></div></form>' +
+        '<div class="more"><button class="quiet" data-act="g-salta">Salta la guida</button></div>';
+    } else if (g.passo === 1) {
+      var opz = '';
+      for (var d = 1; d <= 28; d++) opz += '<option value="' + d + '"' + (d === g.giorno ? ' selected' : '') + '>' + (d === 1 ? '1 (mese normale)' : d) + '</option>';
+      h += '<form class="form" data-guida novalidate>' +
+        '<p class="note">Molti contano il mese dallo stipendio e non dal primo. Scegli il giorno da cui parte il tuo: con il 1 è il mese normale, con il 27 ottobre va dal 27 ottobre al 26 novembre.</p>' +
+        '<label>Il mio mese comincia il giorno<select name="giornoG">' + opz + '</select></label>' +
+        '<p class="note" data-anteprima>Il mese in corso andrebbe: ' + esc(anteprimaMese(g.giorno)) + '</p>' +
+        '<div class="actions"><button type="submit" class="btn primary">Avanti</button><button type="button" class="btn" data-act="g-indietro">Indietro</button></div></form>' +
+        '<div class="more"><button class="quiet" data-act="g-salta">Salta la guida</button></div>';
+    } else if (g.passo === 2) {
+      h += '<form class="form" data-guida novalidate>' +
+        '<p class="note">Tocca una spesa per aggiungerla, poi scrivi importo e giorno. Per le bollette scrivi una cifra media: ogni mese potrai correggerla. Decidi tu cosa tenere.</p>' +
+        '<div class="chips">' + SUGGERITE.map(function(n, i){ return '<button type="button" class="chip" data-act="g-chip" data-n="' + i + '">+ ' + esc(n) + '</button>'; }).join('') + '</div>';
+      g.righe.forEach(function(r){ h += rigaGuida(r); });
+      h += '<button type="button" class="btn" data-act="g-aggiungi">+ Un\'altra spesa</button>' +
+        (g.err ? '<p class="err" role="alert">' + esc(g.err) + '</p>' : '') +
+        '<div class="actions"><button type="submit" class="btn primary">Avanti</button><button type="button" class="btn" data-act="g-indietro">Indietro</button></div></form>' +
+        '<div class="more"><button class="quiet" data-act="g-salta">Salta la guida</button></div>';
+    } else {
+      var tot = 0; g.finali.forEach(function(r){ tot += r.amt; });
+      h += '<div class="form"><h2 class="auth-t">Ecco cosa ho preparato</h2>' +
+        '<p class="note">Il tuo mese comincia il giorno ' + g.giorno + ': ' + esc(anteprimaMese(g.giorno)) + '.</p>';
+      if (g.finali.length) {
+        h += '<ul class="list" style="margin:0">' + g.finali.map(function(r){ return '<li class="rec-row" style="cursor:default"><span class="rn"><b>' + esc(r.name) + '</b><span>il ' + r.day + ' di ogni mese · ' + (r.pay === 'contanti' ? 'Contanti' : 'Banca') + '</span></span><span class="ra">' + eur(r.amt) + '</span></li>'; }).join('') + '</ul>' +
+          '<p class="note">Totale delle spese fisse: <strong>' + eur(tot) + '</strong> al mese. Le trovi già inserite in ogni mese. Per cambiarle o aggiungerne tocca «Ricorrenti».</p>';
+      } else {
+        h += '<p class="note">Nessuna spesa fissa per ora. Quando vuoi, aggiungile da «Ricorrenti».</p>';
+      }
+      h += '<div class="actions"><button type="button" class="btn primary" data-act="g-fine">Vai alle mie spese</button><button type="button" class="btn" data-act="g-indietro">Indietro</button></div></div>';
+    }
+    app.innerHTML = h;
+  }
+  // salva nella guida quello che è scritto nei campi, prima di ridisegnare
+  function leggiGuida(){
+    var f = app.querySelector('[data-guida]');
+    if (!f || !guida) return;
+    if (guida.passo === 1 && f.elements.giornoG) guida.giorno = parseInt(f.elements.giornoG.value, 10) || 1;
+    if (guida.passo === 2) {
+      guida.righe = [].map.call(f.querySelectorAll('[data-riga]'), function(el){
+        var ck = el.querySelector('input[type=radio]:checked');
+        return { id: el.getAttribute('data-riga'), name: el.querySelector('[name=name]').value, amt: el.querySelector('[name=amt]').value,
+          day: el.querySelector('[name=day]').value, pay: ck ? ck.value : 'conto' };
+      });
+    }
+  }
+  function avantiGuida(){
+    leggiGuida();
+    var g = guida;
+    if (g.passo === 2) {
+      var out = [], err = '';
+      for (var i = 0; i < g.righe.length; i++) {
+        var r = g.righe[i], n = r.name.trim(), a = parseAmount(r.amt), d = parseInt(r.day, 10);
+        if (!n && !String(r.amt).trim() && !String(r.day).trim()) continue;
+        if (!n) { err = 'Scrivi il nome di ogni spesa, oppure toglila.'; break; }
+        if (!(a > 0)) { err = 'Scrivi l\'importo di «' + n + '», ad esempio 450,00.'; break; }
+        if (!(d >= 1 && d <= 31)) { err = 'Il giorno di «' + n + '» deve essere tra 1 e 31.'; break; }
+        out.push({ id: newId(), name: n, amt: a, day: d, pay: r.pay === 'contanti' ? 'contanti' : 'conto' });
+      }
+      g.err = err;
+      if (err) { render(); return; }
+      g.finali = out;
+    }
+    g.passo++;
+    render();
+    window.scrollTo(0, 0);
+  }
+  function chiudiGuida(salta){
+    var g = guida;
+    if (!salta && g) {
+      if (g.giorno !== START) cambiaInizioMese(g.giorno);
+      else state.startDay = START;
+      if (!state.monthly) state.monthly = [];
+      var da = periodOf(new Date());
+      g.finali.forEach(function(r){ state.monthly.push({ id: r.id, name: r.name, amt: r.amt, day: r.day, pay: r.pay, from: da, done: {} }); });
+    }
+    state.guidaFatta = true;
+    guida = null; guidaChiusa = true; view = 'month';
+    cur = periodOf(new Date());
+    try { sessionStorage.setItem('mese', cur); } catch(e) {}
+    schedule(); render();
+    window.scrollTo(0, 0);
+  }
+
   var pollTimer = null;
   function initStorage(){
     salvaSessione(leggiSessione());
@@ -868,7 +1127,7 @@ button:disabled{opacity:.6;cursor:default}
     pollTimer = setInterval(function(){
       if (!sessione) return;
       if ((pendingSave || saveState === 'pending') && !migrazioneInSospeso) return;
-      if (editing || debtEditing) return;
+      if (editing || debtEditing || guida || recEditing) return;
       caricaRemoto();
     }, 6000);
   }
@@ -887,6 +1146,44 @@ button:disabled{opacity:.6;cursor:default}
     if (act === 'auth-reset') { authMode = 'reset'; authMsg = null; renderAccesso(); return; }
     if (act === 'auth-iscriviti') { authMode = 'iscriviti'; authMsg = null; renderAccesso(); return; }
     if (act === 'auth-accedi') { authMode = 'accedi'; authMsg = null; renderAccesso(); return; }
+    if (act === 'rec-open') { leggiGuida(); view = 'ricorrenti'; recEditing = null; recError = ''; armedRec = false; editing = null; render(); return; }
+    if (act === 'rec-back') { view = 'month'; recEditing = null; recError = ''; armedRec = false; render(); return; }
+    if (act === 'rec-add') { recEditing = 'new'; recError = ''; armedRec = false; render(); return; }
+    if (act === 'rec-edit') { recEditing = t.getAttribute('data-id'); recError = ''; armedRec = false; render(); return; }
+    if (act === 'rec-cancel') { recEditing = null; recError = ''; armedRec = false; render(); return; }
+    if (act === 'rec-delete') { if (!armedRec) { armedRec = true; render(); return; } eliminaRicorrente(); return; }
+    if (act === 'rec-stop-w') {
+      var wid = t.getAttribute('data-id'), oggiW = periodOf(new Date());
+      state.weekly = (state.weekly || []).filter(function(r){ return r.id !== wid; });
+      state.items = state.items.filter(function(i){ return !(i.r === wid && i.m >= oggiW); });
+      schedule(); render(); return;
+    }
+    if (act === 'g-riapri') { riapriGuida(); return; }
+    if (act === 'g-salta') { chiudiGuida(true); return; }
+    if (act === 'g-indietro') { leggiGuida(); if (guida.passo > 0) guida.passo--; guida.err = ''; render(); window.scrollTo(0, 0); return; }
+    if (act === 'g-fine') { chiudiGuida(false); return; }
+    if (act === 'g-chip') {
+      leggiGuida();
+      guida.righe.push({ id: newId(), name: SUGGERITE[parseInt(t.getAttribute('data-n'), 10)] || '', amt: '', day: '', pay: 'conto' });
+      guida.err = ''; render();
+      var ult = app.querySelectorAll('[data-riga]'); ult = ult[ult.length - 1];
+      if (ult) { var ia = ult.querySelector('[name=amt]'); if (ia) { try { ia.focus({ preventScroll: true }); } catch(e) {} ult.scrollIntoView({ block: 'center' }); } }
+      return;
+    }
+    if (act === 'g-aggiungi') {
+      leggiGuida();
+      guida.righe.push({ id: newId(), name: '', amt: '', day: '', pay: 'conto' });
+      guida.err = ''; render();
+      var ult2 = app.querySelectorAll('[data-riga]'); ult2 = ult2[ult2.length - 1];
+      if (ult2) { var inm = ult2.querySelector('[name=name]'); if (inm) { try { inm.focus({ preventScroll: true }); } catch(e) {} ult2.scrollIntoView({ block: 'center' }); } }
+      return;
+    }
+    if (act === 'g-togli') {
+      leggiGuida();
+      var tid2 = t.getAttribute('data-id');
+      guida.righe = guida.righe.filter(function(r){ return r.id !== tid2; });
+      guida.err = ''; render(); return;
+    }
     if (act === 'set-open') { view = 'impostazioni'; setMsg = null; armedElimina = false; render(); return; }
     if (act === 'set-back') { view = 'month'; setMsg = null; armedElimina = false; render(); return; }
     if (act === 'set-link') { mandaLink(); return; }
@@ -915,7 +1212,7 @@ button:disabled{opacity:.6;cursor:default}
     else if (act === 'edit') { editing = t.getAttribute('data-id'); formError = ''; armedDelete = false; render(); }
     else if (act === 'cancel') { editing = null; formError = ''; armedDelete = false; render(); }
     else if (act === 'copy') {
-      candidates().forEach(function(i){ if (i.r) return; state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
+      candidates().forEach(function(i){ if (i.r || i.rm) return; state.items.push({ id: newId(), m: cur, name: i.name, amt: i.amt, day: i.day, pay: i.pay }); });
       schedule(); render();
     }
     else if (act === 'move') {
@@ -946,10 +1243,17 @@ button:disabled{opacity:.6;cursor:default}
     }
     else if (act === 'stop-rep') {
       var cu = state.items.filter(function(i){ return i.id === editing; })[0];
-      if (!cu || !cu.r) return;
-      var rid = cu.r, mo = cu.m, oo = ord(cu.day);
-      state.weekly = (state.weekly || []).filter(function(r){ return r.id !== rid; });
-      state.items = state.items.filter(function(i){ return !(i.r === rid && (i.m > mo || (i.m === mo && ord(i.day) >= oo))); });
+      if (!cu || !(cu.r || cu.rm)) return;
+      var mo = cu.m, oo = ord(cu.day);
+      if (cu.r) {
+        var rid = cu.r;
+        state.weekly = (state.weekly || []).filter(function(r){ return r.id !== rid; });
+        state.items = state.items.filter(function(i){ return !(i.r === rid && (i.m > mo || (i.m === mo && ord(i.day) >= oo))); });
+      } else {
+        var ridm = cu.rm;
+        state.monthly = (state.monthly || []).filter(function(r){ return r.id !== ridm; });
+        state.items = state.items.filter(function(i){ return !(i.rm === ridm && (i.m > mo || (i.m === mo && ord(i.day) >= oo))); });
+      }
       editing = null; armedDelete = false; schedule(); render();
     }
     else if (act === 'delete') {
@@ -963,6 +1267,8 @@ button:disabled{opacity:.6;cursor:default}
   app.addEventListener('submit', function(ev){
     ev.preventDefault();
     if (ev.target.hasAttribute('data-auth')) { inviaAuth(ev.target); return; }
+    if (ev.target.hasAttribute('data-guida')) { avantiGuida(); return; }
+    if (ev.target.hasAttribute('data-rec-form')) { salvaRicorrente(ev.target); return; }
     if (ev.target.hasAttribute('data-inizio')) {
       var g2 = parseInt(ev.target.elements.giorno.value, 10);
       if (!(g2 >= 1 && g2 <= 28)) { setMsg = { sez: 'inizio', tipo: 'err', testo: 'Scegli un giorno tra 1 e 28.' }; render(); return; }
@@ -997,11 +1303,12 @@ button:disabled{opacity:.6;cursor:default}
     var day = parseInt(f.elements.day.value, 10);
     var pay = f.elements.pay.value === 'contanti' ? 'contanti' : 'conto';
     var sett = editing === 'new' && f.elements.rep && f.elements.rep.value === 'sett';
+    var mese = editing === 'new' && f.elements.rep && f.elements.rep.value === 'mese';
     var wd = parseInt(f.elements.wd.value, 10);
     if (!name) formError = 'Scrivi il nome della spesa.';
     else if (!(amt > 0)) formError = 'Scrivi un importo, ad esempio 450,00.';
     else if (!sett && !(day >= 1 && day <= 31)) formError = 'Il giorno deve essere tra 1 e 31.';
-    else if (!sett && !dataVera(cur, day) && (editing === 'new' || !state.items.some(function(i){ return i.id === editing && i.day === day; }))) formError = frase(cur, day).t + ': scegli un altro giorno.';
+    else if (!sett && !mese && !dataVera(cur, day) && (editing === 'new' || !state.items.some(function(i){ return i.id === editing && i.day === day; }))) formError = frase(cur, day).t + ': scegli un altro giorno.';
     else formError = '';
     if (formError) {
       var rawAmt = f.elements.amt.value, rawDay = f.elements.day.value;
@@ -1011,6 +1318,7 @@ button:disabled{opacity:.6;cursor:default}
         ff.elements.name.value = name; ff.elements.amt.value = rawAmt; ff.elements.day.value = rawDay;
         ff.querySelector('input[value=' + pay + ']').checked = true;
         if (sett && ff.elements.rep) { ff.querySelector('input[name=rep][value=sett]').checked = true; ff.elements.wd.value = String(wd); }
+        if (mese && ff.elements.rep) ff.querySelector('input[name=rep][value=mese]').checked = true;
         mostraAvviso(ff);
       }
       return;
@@ -1019,6 +1327,10 @@ button:disabled{opacity:.6;cursor:default}
       var rid2 = newId();
       state.weekly.push({ id: rid2, name: name, amt: amt, pay: pay, w: wd, from: cur, done: {} });
       riempiSettimanali(cur);
+    } else if (mese) {
+      if (!state.monthly) state.monthly = [];
+      state.monthly.push({ id: newId(), name: name, amt: amt, day: day, pay: pay, from: cur, done: {} });
+      riempiMensili(cur);
     } else if (editing === 'new') {
       state.items.push({ id: newId(), m: cur, name: name, amt: amt, day: day, pay: pay });
     } else {
@@ -1040,7 +1352,13 @@ button:disabled{opacity:.6;cursor:default}
     h.textContent = fr.t; h.className = 'hint' + (fr.ok ? '' : ' no');
   }
   app.addEventListener('input', function(ev){ var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm); });
-  app.addEventListener('change', function(ev){ var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm); });
+  app.addEventListener('change', function(ev){
+    var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm);
+    if (guida && ev.target.name === 'giornoG') {
+      var nn = app.querySelector('[data-anteprima]');
+      if (nn) nn.textContent = 'Il mese in corso andrebbe: ' + anteprimaMese(parseInt(ev.target.value, 10) || 1);
+    }
+  });
 
   initStorage();
 })();
