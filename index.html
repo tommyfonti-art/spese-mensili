@@ -113,7 +113,7 @@ button{cursor:pointer}
 .hint{margin:4px 0 0;font-size:13px;font-weight:600;color:var(--conto-text);min-height:17px}
 .hint.no{color:var(--danger)}
 .form select{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:600;color:var(--ink)}
-.form input[type=text],.form input[type=email],.form input[type=password]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:600;color:var(--ink)}
+.form input[type=text],.form input[type=email],.form input[type=password],.form input[type=date]{display:block;width:100%;margin-top:4px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:600;color:var(--ink)}
 .two{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
 fieldset{border:0;margin:0;padding:0}
 .segs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
@@ -250,11 +250,20 @@ button:disabled{opacity:.6;cursor:default}
     return d;
   }
   // tutte le date del mese k che cadono nel giorno della settimana w (0 = domenica ... 6 = sabato)
-  function dateSettimanali(k, w){
+  // ogni = 2 vuol dire una settimana sì e una no, contando dalla data di partenza (ancora, AAAA-MM-GG)
+  function dateSettimanali(k, w, ogni, ancora){
     var p = k.split('-'), y = +p[0], m = +p[1] - 1;
     var d = new Date(y, m, START), fine = new Date(y, m + 1, START);
-    var out = [];
-    while (d < fine) { if (d.getDay() === w) out.push(new Date(d.getTime())); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+    var out = [], ad = null;
+    if (ogni === 2 && ancora) { var a = ancora.split('-'); ad = new Date(+a[0], +a[1] - 1, +a[2]); }
+    while (d < fine) {
+      if (d.getDay() === w) {
+        var ok = true;
+        if (ad) { var diff = Math.round((d.getTime() - ad.getTime()) / 86400000); ok = diff >= 0 && diff % 14 === 0; }
+        if (ok) out.push(new Date(d.getTime()));
+      }
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    }
     return out;
   }
   // per ogni spesa che si ripete ogni settimana, mette nel mese k le sue date (una volta sola per mese)
@@ -264,7 +273,7 @@ button:disabled{opacity:.6;cursor:default}
       if (!r.done) r.done = {};
       if (k < r.from || r.done[k]) return;
       r.done[k] = 1; cambiato = true;
-      dateSettimanali(k, r.w).forEach(function(d){
+      dateSettimanali(k, r.w, r.ogni, r.ancora).forEach(function(d){
         state.items.push({ id: newId(), m: k, name: r.name, amt: r.amt, day: d.getDate(), pay: r.pay, r: r.id });
       });
     });
@@ -283,6 +292,10 @@ button:disabled{opacity:.6;cursor:default}
       state.items.push({ id: newId(), m: k, name: r.name, amt: r.amt, day: giornoPer(k, r.day), pay: r.pay, rm: r.id });
     });
     return cambiato;
+  }
+  function frequenzaSett(id){
+    var r = (state.weekly || []).filter(function(x){ return x.id === id; })[0];
+    return r && r.ogni === 2 ? 'ogni 2 settimane' : 'ogni settimana';
   }
   function esisteMensile(id){ return (state.monthly || []).some(function(r){ return r.id === id; }); }
   function frase(k, day){
@@ -326,7 +339,7 @@ button:disabled{opacity:.6;cursor:default}
         '<label class="seg"><input type="radio" name="rep" value="sett"' + (it.rep === 'sett' ? ' checked' : '') + '><span>Ogni settimana</span></label>' +
         '<label class="seg"><input type="radio" name="rep" value="mese"' + (it.rep === 'mese' ? ' checked' : '') + '><span>Ogni mese</span></label>' +
       '</div></fieldset>' : '') +
-      (it.r ? '<p class="note">Questa spesa si ripete ogni settimana. Le modifiche valgono solo per questa data.</p>' : '') +
+      (it.r ? '<p class="note">Questa spesa si ripete ' + frequenzaSett(it.r) + '. Le modifiche valgono solo per questa data.</p>' : '') +
       (it.rm && esisteMensile(it.rm) ? '<p class="note">Questa spesa si ripete ogni mese. Le modifiche valgono solo per questo mese: per cambiarla sempre usa «Ricorrenti».</p>' : '') +
       '<fieldset><legend>Come si paga</legend><div class="segs">' +
         '<label class="seg"><input type="radio" name="pay" value="conto"' + (it.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
@@ -918,14 +931,43 @@ button:disabled{opacity:.6;cursor:default}
 
   // ---- spese ricorrenti ogni mese: si gestiscono qui ----
   var GIORNI_SETT = GIORNI;
+  function tipoDi(r){ return r.w != null && r.day == null ? (r.ogni === 2 ? 'sett2' : 'sett') : 'mese'; }
+  function dataIso(v){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return (d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3]) ? d : null;
+  }
+  // mostra solo i campi giusti per il tipo scelto (ogni mese, ogni settimana, ogni 2 settimane)
+  function mostraTipoRec(form){
+    var t = form.getAttribute('data-tipo');
+    var rad = form.querySelector('input[name=rtipo]:checked');
+    if (rad) t = rad.value;
+    Array.prototype.forEach.call(form.querySelectorAll('[data-rt]'), function(el){ el.hidden = el.getAttribute('data-rt') !== t; });
+    var h = form.querySelector('[data-rec-hint]');
+    if (h) {
+      var d = t === 'sett2' ? dataIso(form.elements.ancora.value) : null;
+      h.textContent = d ? 'Quel giorno è ' + GIORNI[d.getDay()] + ': da lì si ripete ogni 2 settimane.' : '';
+      h.hidden = !d;
+    }
+  }
   function recForm(r){
-    return '<form class="form" data-rec-form novalidate>' +
+    var tipo = r.tipo || 'mese', nuova = !r.id;
+    function hid(t){ return tipo === t ? '' : ' hidden'; }
+    function rad(v, testo){ return '<label class="seg"><input type="radio" name="rtipo" value="' + v + '"' + (tipo === v ? ' checked' : '') + '><span>' + testo + '</span></label>'; }
+    return '<form class="form" data-rec-form data-tipo="' + tipo + '" novalidate>' +
       '<label>Nome<input type="text" name="name" autocomplete="off" placeholder="es. Mutuo" value="' + esc(r.name || '') + '"></label>' +
+      (nuova ? '<fieldset><legend>Quanto spesso</legend><div class="segs tre">' + rad('mese', 'Ogni mese') + rad('sett', 'Ogni settimana') + rad('sett2', 'Ogni 2 settimane') + '</div></fieldset>' : '') +
       '<div class="two">' +
         '<label>Importo (€)<input type="text" name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="' + (r.amt ? esc(String(r.amt).replace('.', ',')) : '') + '"></label>' +
-        '<label>Giorno del mese<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(r.day || '') + '"></label>' +
+        '<div data-rt="mese"' + hid('mese') + '><label>Giorno del mese<input type="text" name="day" inputmode="numeric" autocomplete="off" placeholder="GG" value="' + esc(r.day || '') + '"></label></div>' +
+        '<div data-rt="sett"' + hid('sett') + '><label>Che giorno<select name="wd">' + [1,2,3,4,5,6,0].map(function(g){ return '<option value="' + g + '"' + (g === (r.w == null ? 1 : r.w) ? ' selected' : '') + '>' + GIORNI[g] + '</option>'; }).join('') + '</select></label></div>' +
+        '<div data-rt="sett2"' + hid('sett2') + '><label>Prima data<input type="date" name="ancora" value="' + esc(r.ancora || '') + '"></label></div>' +
       '</div>' +
-      '<p class="note">Se in un mese quel giorno non c\'è (per esempio il 31), la spesa va all\'ultimo giorno del mese.</p>' +
+      '<p class="hint" data-rec-hint hidden></p>' +
+      '<p class="note" data-rt="mese"' + hid('mese') + '>Se in un mese quel giorno non c\'è (per esempio il 31), la spesa va all\'ultimo giorno del mese.</p>' +
+      '<p class="note" data-rt="sett"' + hid('sett') + '>L\'app trova da sola tutte le date di quel giorno nel tuo mese: a volte sono 4, a volte 5.</p>' +
+      '<p class="note" data-rt="sett2"' + hid('sett2') + '>Scegli la prima data: le altre cadono una ogni 2 settimane da lì, e l\'app le mette da sola in ogni mese.</p>' +
       '<fieldset><legend>Come si paga</legend><div class="segs">' +
         '<label class="seg"><input type="radio" name="pay" value="conto"' + (r.pay !== 'contanti' ? ' checked' : '') + '><span>Banca</span></label>' +
         '<label class="seg c"><input type="radio" name="pay" value="contanti"' + (r.pay === 'contanti' ? ' checked' : '') + '><span>Contanti</span></label>' +
@@ -938,57 +980,88 @@ button:disabled{opacity:.6;cursor:default}
       '</div></form>';
   }
   function renderRicorrenti(){
-    var h = '<header class="top"><div class="mid"><h1 class="month">Spese ricorrenti</h1><p class="sub">Tornano da sole ogni mese</p></div></header>' +
+    var h = '<header class="top"><div class="mid"><h1 class="month">Spese ricorrenti</h1><p class="sub">Tornano da sole, ogni mese o ogni settimana</p></div></header>' +
       '<button class="yr-btn" data-act="rec-back">‹ Torna alle spese</button>';
     h += '<section class="sect"><h2>Ogni mese</h2><ul class="list">';
     var mens = (state.monthly || []).slice().sort(function(a, b){ return (ord(a.day) - ord(b.day)) || a.name.localeCompare(b.name, 'it'); });
+    var sett = (state.weekly || []).slice().sort(function(a, b){ return a.name.localeCompare(b.name, 'it'); });
     mens.forEach(function(r){
-      if (recEditing === r.id) { h += '<li>' + recForm(r) + '</li>'; return; }
+      if (recEditing === r.id) { h += '<li>' + recForm(Object.assign({ tipo: 'mese' }, r)) + '</li>'; return; }
       h += '<li><button class="rec-row" data-act="rec-edit" data-id="' + esc(r.id) + '"><span class="rn"><b>' + esc(r.name) + '</b><span>il ' + r.day + ' di ogni mese · ' + (r.pay === 'contanti' ? 'Contanti' : 'Banca') + '</span></span><span class="ra">' + eur(r.amt) + '</span></button></li>';
     });
-    if (recEditing === 'new') h += '<li>' + recForm({ pay: 'conto' }) + '</li>';
+    if (recEditing === 'new') h += '<li>' + recForm({ pay: 'conto', tipo: 'mese' }) + '</li>';
     h += '</ul>';
-    if (!mens.length && recEditing !== 'new') h += '<div class="empty"><p>Non hai ancora spese ricorrenti. Aggiungi per esempio il mutuo, l\'affitto o le bollette: ogni mese le trovi già inserite.</p></div>';
+    if (!mens.length && !sett.length && recEditing !== 'new') h += '<div class="empty"><p>Non hai ancora spese ricorrenti. Aggiungi per esempio il mutuo, l\'affitto o le bollette: ogni mese le trovi già inserite. Puoi anche sceglierne una che torna ogni settimana o ogni 2 settimane.</p></div>';
     if (recEditing !== 'new') h += '<div class="more"><button class="btn wide" data-act="rec-add">Aggiungi una spesa ricorrente</button></div>';
     h += '</section>';
-    var sett = state.weekly || [];
     if (sett.length) {
       h += '<section class="sect"><h2>Ogni settimana</h2><ul class="list">';
       sett.forEach(function(r){
-        h += '<li class="item"><div class="rec-row" style="flex:1"><span class="rn"><b>' + esc(r.name) + '</b><span>ogni ' + GIORNI_SETT[r.w] + ' · ' + (r.pay === 'contanti' ? 'Contanti' : 'Banca') + '</span></span><span class="ra">' + eur(r.amt) + '</span></div>' +
-          '<button type="button" class="trash" data-act="rec-stop-w" data-id="' + esc(r.id) + '" aria-label="Ferma ' + esc(r.name) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg></button></li>';
+        var t = tipoDi(r);
+        if (recEditing === r.id) { h += '<li>' + recForm(Object.assign({}, r, { tipo: t })) + '</li>'; return; }
+        var quando = t === 'sett2' ? 'ogni 2 settimane, di ' + GIORNI[r.w] : 'ogni ' + GIORNI[r.w];
+        h += '<li><button class="rec-row" data-act="rec-edit" data-id="' + esc(r.id) + '"><span class="rn"><b>' + esc(r.name) + '</b><span>' + quando + ' · ' + (r.pay === 'contanti' ? 'Contanti' : 'Banca') + '</span></span><span class="ra">' + eur(r.amt) + '</span></button></li>';
       });
-      h += '</ul><p class="note" style="margin-top:8px">Il cestino ferma la ripetizione da questo mese in poi.</p></section>';
+      h += '</ul></section>';
     }
     app.innerHTML = h;
+    var rf0 = app.querySelector('[data-rec-form]');
+    if (rf0) mostraTipoRec(rf0);
     var f = app.querySelector('[data-rec-form] input[name=name]');
     if (f) { try { f.focus({ preventScroll: true }); } catch(e) { f.focus(); } var fm = f.closest('form'); setTimeout(function(){ if (fm.isConnected) fm.scrollIntoView({ block: 'start' }); }, 120); }
   }
   function salvaRicorrente(form){
     var name = form.elements.name.value.trim(), rawA = form.elements.amt.value, amt = parseAmount(rawA);
     var rawD = form.elements.day.value, day = parseInt(rawD, 10);
+    var rawAn = form.elements.ancora.value, anc = dataIso(rawAn);
+    var wd = parseInt(form.elements.wd.value, 10);
     var pay = form.elements.pay.value === 'contanti' ? 'contanti' : 'conto';
+    var radT = form.querySelector('input[name=rtipo]:checked');
+    var tipo = radT ? radT.value : form.getAttribute('data-tipo');
     if (!name) recError = 'Scrivi il nome della spesa.';
     else if (!(amt > 0)) recError = 'Scrivi un importo, ad esempio 450,00.';
-    else if (!(day >= 1 && day <= 31)) recError = 'Il giorno deve essere tra 1 e 31.';
+    else if (tipo === 'mese' && !(day >= 1 && day <= 31)) recError = 'Il giorno deve essere tra 1 e 31.';
+    else if (tipo === 'sett2' && !anc) recError = 'Scegli la prima data.';
     else recError = '';
     if (recError) {
       render();
       var f2 = app.querySelector('[data-rec-form]');
-      if (f2) { f2.elements.name.value = name; f2.elements.amt.value = rawA; f2.elements.day.value = rawD; f2.querySelector('input[value=' + pay + ']').checked = true; }
+      if (f2) {
+        f2.elements.name.value = name; f2.elements.amt.value = rawA; f2.elements.day.value = rawD;
+        f2.elements.wd.value = String(wd); f2.elements.ancora.value = rawAn;
+        f2.querySelector('input[name=pay][value=' + pay + ']').checked = true;
+        var rt = f2.querySelector('input[name=rtipo][value=' + tipo + ']');
+        if (rt) rt.checked = true;
+        mostraTipoRec(f2);
+      }
       return;
     }
     var oggiP = periodOf(new Date());
     if (!state.monthly) state.monthly = [];
+    if (!state.weekly) state.weekly = [];
+    var wFinale = tipo === 'sett2' ? anc.getDay() : wd;
     if (recEditing === 'new') {
-      state.monthly.push({ id: newId(), name: name, amt: amt, day: day, pay: pay, from: oggiP, done: {} });
+      if (tipo === 'mese') state.monthly.push({ id: newId(), name: name, amt: amt, day: day, pay: pay, from: oggiP, done: {} });
+      else if (tipo === 'sett') state.weekly.push({ id: newId(), name: name, amt: amt, pay: pay, w: wFinale, from: oggiP, done: {} });
+      else state.weekly.push({ id: newId(), name: name, amt: amt, pay: pay, w: wFinale, ogni: 2, ancora: rawAn, from: oggiP, done: {} });
     } else {
       var id = recEditing;
-      state.monthly.forEach(function(r){ if (r.id === id) { r.name = name; r.amt = amt; r.day = day; r.pay = pay; } });
-      // le voci dal mese in corso in poi prendono i nuovi dati
-      state.items.forEach(function(i){
-        if (i.rm === id && i.m >= oggiP) { i.name = name; i.amt = amt; i.pay = pay; i.day = giornoPer(i.m, day); }
-      });
+      if (tipo === 'mese') {
+        state.monthly.forEach(function(r){ if (r.id === id) { r.name = name; r.amt = amt; r.day = day; r.pay = pay; } });
+        // le voci dal mese in corso in poi prendono i nuovi dati
+        state.items.forEach(function(i){
+          if (i.rm === id && i.m >= oggiP) { i.name = name; i.amt = amt; i.pay = pay; i.day = giornoPer(i.m, day); }
+        });
+      } else {
+        state.weekly.forEach(function(r){
+          if (r.id !== id) return;
+          r.name = name; r.amt = amt; r.pay = pay; r.w = wFinale;
+          if (tipo === 'sett2') { r.ogni = 2; r.ancora = rawAn; } else { delete r.ogni; delete r.ancora; }
+          // dal mese in corso in poi le date si rifanno con i nuovi dati
+          Object.keys(r.done || {}).forEach(function(k){ if (k >= oggiP) delete r.done[k]; });
+        });
+        state.items = state.items.filter(function(i){ return !(i.r === id && i.m >= oggiP); });
+      }
     }
     recEditing = null; armedRec = false; recError = '';
     schedule(); render();
@@ -996,7 +1069,8 @@ button:disabled{opacity:.6;cursor:default}
   function eliminaRicorrente(){
     var id = recEditing, oggiP = periodOf(new Date());
     state.monthly = (state.monthly || []).filter(function(r){ return r.id !== id; });
-    state.items = state.items.filter(function(i){ return !(i.rm === id && i.m >= oggiP); });
+    state.weekly = (state.weekly || []).filter(function(r){ return r.id !== id; });
+    state.items = state.items.filter(function(i){ return !((i.rm === id || i.r === id) && i.m >= oggiP); });
     recEditing = null; armedRec = false; recError = '';
     schedule(); render();
   }
@@ -1359,6 +1433,7 @@ button:disabled{opacity:.6;cursor:default}
   app.addEventListener('input', function(ev){ var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm); });
   app.addEventListener('change', function(ev){
     var fm = ev.target.closest && ev.target.closest('[data-form]'); if (fm) mostraAvviso(fm);
+    var fr = ev.target.closest && ev.target.closest('[data-rec-form]'); if (fr) mostraTipoRec(fr);
     if (ev.target.name === 'tema') {
       var tv = ev.target.value;
       try { if (tv === 'dark' || tv === 'light') localStorage.setItem('spese_tema', tv); else localStorage.removeItem('spese_tema'); } catch(e) {}
