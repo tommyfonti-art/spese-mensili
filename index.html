@@ -145,6 +145,8 @@ fieldset{border:0;margin:0;padding:0}
 .rec-row .rn span{font-size:12px;color:var(--muted)}
 .rec-row .ra{font-family:var(--display);font-weight:600;font-size:16px;white-space:nowrap}
 button:disabled{opacity:.6;cursor:default}
+
+.pw-box{position:relative;display:block}.pw-box input{padding-right:48px!important;width:100%;box-sizing:border-box}.occhio{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:42px;height:42px;padding:0;margin:0;background:none;border:0;color:#7a7a7a;display:flex;align-items:center;justify-content:center;cursor:pointer}
 </style></head><body><div id="app"></div><script id="main">
 (function(){
   var app = document.getElementById('app');
@@ -785,9 +787,9 @@ button:disabled{opacity:.6;cursor:default}
     var titolo = authMode === 'iscriviti' ? 'Crea il tuo account' : (authMode === 'reset' ? 'Password dimenticata' : 'Accedi');
     var h = '<header class="top"><div class="mid"><h1 class="month">Spese del mese</h1><p class="sub">' + esc(sotto) + '</p></div></header>';
     h += '<form class="form" data-auth novalidate><h2 class="auth-t">' + esc(titolo) + '</h2>' +
-      '<label>Email<input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" value="' + esc(authEmail) + '"></label>';
-    if (authMode !== 'reset') h += '<label>Password<input type="password" name="password" autocomplete="' + (authMode === 'iscriviti' ? 'new-password' : 'current-password') + '"></label>';
-    if (authMode === 'iscriviti') h += '<label>Ripeti la password<input type="password" name="password2" autocomplete="new-password"></label>' +
+      '<label>Email<input type="email" name="email" id="acc-email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" value="' + esc(authEmail) + '"></label>';
+    if (authMode !== 'reset') h += '<label>Password<span class="pw-box"><input type=\"password\" name=\"password\" id=\"acc-pw\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" autocomplete=\"' + (authMode === 'iscriviti' ? 'new-password' : 'current-password') + '\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>';
+    if (authMode === 'iscriviti') h += '<label>Ripeti la password<span class="pw-box"><input type=\"password\" name=\"password2\" autocomplete=\"new-password\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>' +
       "<p class=\"note\">Almeno 8 caratteri. Le tue spese sono visibili solo a te e a chi gestisce l'app.</p>";
     if (authMsg) h += '<p class="' + (authMsg.tipo === 'ok' ? 'okm' : 'err') + '" role="alert">' + esc(authMsg.testo) + '</p>';
     var etichetta = authBusy ? 'Un attimo…' : (authMode === 'iscriviti' ? 'Iscriviti' : (authMode === 'reset' ? 'Mandami il link' : 'Accedi'));
@@ -822,7 +824,8 @@ button:disabled{opacity:.6;cursor:default}
       if (pw.length < 8) { authMsg = { tipo: 'err', testo: 'La password deve avere almeno 8 caratteri.' }; renderAccesso(); return; }
       if (pw !== pw2) { authMsg = { tipo: 'err', testo: 'Le due password non coincidono.' }; renderAccesso(); return; }
     }
-    authBusy = true; renderAccesso();
+    authBusy = true;
+    var bInvia = form.querySelector('button[type=submit]'); if (bInvia) { bInvia.disabled = true; bInvia.textContent = 'Un attimo…'; }
     authPost(authMode === 'iscriviti' ? 'signUp' : 'signInWithPassword', { email: email, password: pw, returnSecureToken: true }).then(function(j){
       salvaSessione(sessioneDa(j, email));
       authBusy = false; authMsg = null; authEmail = '';
@@ -858,9 +861,9 @@ button:disabled{opacity:.6;cursor:default}
       '</div></fieldset><p class="note">Automatico segue il tema del telefono. La scelta vale solo su questo dispositivo.</p></form></section>';
     h += '<section class="sect"><h2>Guida iniziale</h2><p class="sub" style="margin:0 0 8px">Rifai i passaggi per scegliere l\'inizio del mese e le spese fisse.</p><button class="btn wide" data-act="g-riapri">Apri la guida</button></section>';
     h += '<section class="sect"><h2>Cambia password</h2><form class="form" data-cambia novalidate>' +
-      '<label>Password attuale<input type="password" name="vecchia" autocomplete="current-password"></label>' +
-      '<label>Nuova password<input type="password" name="nuova" autocomplete="new-password"></label>' +
-      '<label>Ripeti la nuova password<input type="password" name="nuova2" autocomplete="new-password"></label>' +
+      '<label>Password attuale<span class="pw-box"><input type=\"password\" name=\"vecchia\" autocomplete=\"current-password\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>' +
+      '<label>Nuova password<span class="pw-box"><input type=\"password\" name=\"nuova\" autocomplete=\"new-password\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>' +
+      '<label>Ripeti la nuova password<span class="pw-box"><input type=\"password\" name=\"nuova2\" autocomplete=\"new-password\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>' +
       '<p class="note">Almeno 8 caratteri.</p>' + msgHtml('cambia') +
       '<div class="actions"><button type="submit" class="btn primary">Cambia password</button></div></form></section>';
     h += '<section class="sect"><h2>Password dimenticata</h2><p class="sub" style="margin:0 0 8px">Ti mandiamo per email un link per sceglierne una nuova.</p>' +
@@ -871,7 +874,7 @@ button:disabled{opacity:.6;cursor:default}
       h += '<p class="sub" style="margin:0 0 8px">Cancella per sempre il tuo account e tutte le tue spese.</p><button class="btn wide danger" data-act="set-elimina">Elimina il mio account</button>';
     } else {
       h += '<form class="form" data-elimina novalidate><p class="err">Stai per cancellare tutto, senza possibilità di tornare indietro.</p>' +
-        '<label>Scrivi la password per confermare<input type="password" name="pw" autocomplete="current-password"></label>' + msgHtml('elimina') +
+        '<label>Scrivi la password per confermare<span class="pw-box"><input type=\"password\" name=\"pw\" autocomplete=\"current-password\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>' + msgHtml('elimina') +
         '<div class="actions"><button type="submit" class="btn danger">Elimina per sempre</button><button type="button" class="btn" data-act="set-annulla">Annulla</button></div></form>';
     }
     h += '</section>';
@@ -1480,4 +1483,5 @@ button:disabled{opacity:.6;cursor:default}
   }catch(e){}
 })();
 </script>
+<script>document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-occhio]');if(!b)return;e.preventDefault();e.stopPropagation();var p=b.parentNode.querySelector('input');var vedo=p.type==='password';p.type=vedo?'text':'password';b.innerHTML=vedo?'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.7-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>':'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';b.setAttribute('aria-label',vedo?'Nascondi la password':'Mostra la password');},true);</script>
 </body></html>
