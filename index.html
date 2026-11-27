@@ -1,4 +1,4 @@
-<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-11-06d"><meta charset="utf-8"><script>try{var tm=localStorage.getItem("spese_tema");if(tm==="dark"||tm==="light")document.documentElement.setAttribute("data-theme",tm)}catch(e){}</script><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#1F5C46"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap"><style id="css">
+<!doctype html><html lang="it"><head><meta name="versione-app" content="2026-11-27a"><meta charset="utf-8"><script>try{var tm=localStorage.getItem("spese_tema");if(tm==="dark"||tm==="light")document.documentElement.setAttribute("data-theme",tm)}catch(e){}</script><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"><title>Spese del mese</title><link rel="apple-touch-icon" href="icon.png?v=2"><link rel="icon" href="icon.png?v=2"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Spese"><meta name="theme-color" content="#1F5C46"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap"><style id="css">
 html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;}
 :root{
   --bg:#F4F1EA; --surface:#FFFDF8; --ink:#1C2420; --muted:#5F6B64; --line:#DDD8CC;
@@ -394,7 +394,7 @@ button:disabled{opacity:.6;cursor:default}
     var h = '';
     for (var i = 0; i < 12; i++) {
       var k = i === 0 ? cur : shift(cur, i);
-      if (riempiMensili(k) | riempiSettimanali(k)) schedule();
+      if (loaded && (riempiMensili(k) | riempiSettimanali(k))) schedule();
       var tot = 0;
       itemsOf(k).forEach(function(it){ tot += it.amt; });
       h += '<li><button class="yr-row' + (k === cur ? ' cur' : '') + '" data-act="yr-pick" data-k="' + esc(k) + '">' +
@@ -418,7 +418,7 @@ button:disabled{opacity:.6;cursor:default}
       app.innerHTML = h2;
       return;
     }
-    if (riempiSettimanali(cur) | riempiMensili(cur)) schedule();
+    if (loaded && (riempiSettimanali(cur) | riempiMensili(cur))) schedule();
     var items = itemsOf(cur);
     var conto = 0, cont = 0, nConto = 0, nCont = 0;
     items.forEach(function(i){
@@ -469,7 +469,7 @@ button:disabled{opacity:.6;cursor:default}
 
     var msg = '';
     if (saveState === 'pending') msg = 'Salvataggio…';
-    else if (saveState === 'error') msg = 'Non riesco a salvare: controlla la connessione.';
+    else if (saveState === 'error') msg = 'Senza rete: le spese restano sul telefono e le salvo appena torna la connessione.';
     h += '<p class="status" role="status">' + esc(msg) + '</p>';
 
     app.innerHTML = h;
@@ -552,7 +552,7 @@ button:disabled{opacity:.6;cursor:default}
   }
   function esciSubito(){
     salvaSessione(null);
-    state = statoVuoto();
+    state = statoVuoto(); base = copiaStato(state); loaded = false; pendingSave = false;
     editing = null; debtEditing = null; debtOpen = false; view = 'month';
     authMode = 'accedi'; authMsg = null; setMsg = null; armedElimina = false;
     render();
@@ -654,7 +654,12 @@ button:disabled{opacity:.6;cursor:default}
             }
             if(res.status === 401 || res.status === 403){ var e403 = new Error('permission-denied'); e403.code = 'permission-denied'; throw e403; }
             if(res.status === 429){ var e429 = new Error('resource-exhausted'); e429.code = 'resource-exhausted'; throw e429; }
-            var eOther = new Error('http-'+res.status); eOther.code = 'error'; throw eOther;
+            // documento cambiato da un altro dispositivo nel frattempo: si rilegge e si riprova
+            return res.text().then(function(t){
+              var eOther = new Error('http-'+res.status);
+              eOther.code = /FAILED_PRECONDITION|ABORTED/.test(t) || res.status === 409 || res.status === 412 ? 'conflitto' : 'error';
+              throw eOther;
+            });
           }
           return res.status === 204 ? null : res.json();
         })
@@ -667,67 +672,187 @@ button:disabled{opacity:.6;cursor:default}
     });
   }
 
-  var pubTimer = null;
+  // ---- salvataggio (27 novembre) ----
+  // - una copia sta sempre sul telefono: l'app si apre e si usa anche senza rete;
+  // - si salvano solo le voci cambiate su questo dispositivo, unite a quello che c'è sul server
+  //   (così due dispositivi aperti insieme non si cancellano le spese a vicenda);
+  // - se manca la rete si riprova da soli finché il salvataggio non riesce.
+  var loaded = false;
+  var base = copiaStato(state);   // com'era il server l'ultima volta che l'abbiamo letto o scritto
+  var salvataggioInCorso = false;
+  var LISTE = ['items', 'debts', 'weekly', 'monthly'];
+  function copiaStato(o){ return JSON.parse(JSON.stringify(o || {})); }
+  function normalizza(st){
+    st = st && typeof st === 'object' ? st : statoVuoto();
+    if (!Array.isArray(st.items)) st.items = [];
+    if (!Array.isArray(st.debts)) st.debts = [];
+    if (!st.salaries || typeof st.salaries !== 'object') st.salaries = {};
+    if (!Array.isArray(st.weekly)) st.weekly = [];
+    if (!Array.isArray(st.monthly)) st.monthly = [];
+    if (!inizioValido(st.startDay)) st.startDay = 11;
+    LISTE.forEach(function(l){ st[l].forEach(function(x){ if (x && typeof x === 'object' && !x.id) x.id = newId(); }); });
+    return st;
+  }
+  // lo stato diventa un elenco piatto di voci: "items|id", "salaries.2026-11", "startDay"...
+  function piatto(st){
+    var r = {};
+    Object.keys(st || {}).forEach(function(k){
+      var v = st[k];
+      if (LISTE.indexOf(k) >= 0 && Array.isArray(v)) v.forEach(function(x){ if (x && x.id) r[k + '|' + x.id] = x; });
+      else if (k === 'salaries' && v && typeof v === 'object') Object.keys(v).forEach(function(s){ r['salaries.' + s] = v[s]; });
+      else r[k] = v;
+    });
+    return r;
+  }
+  function differenze(a, b){
+    var A = piatto(a), B = piatto(b), ch = {}, ks = {};
+    Object.keys(A).forEach(function(k){ ks[k] = 1; });
+    Object.keys(B).forEach(function(k){ ks[k] = 1; });
+    Object.keys(ks).forEach(function(k){
+      var x = A[k] !== undefined ? JSON.stringify(A[k]) : null, y = B[k] !== undefined ? JSON.stringify(B[k]) : null;
+      if (x !== y) ch[k] = B[k] !== undefined ? copiaStato(B[k]) : null;
+    });
+    return ch;
+  }
+  function applica(st, ch){
+    var r = copiaStato(st);
+    Object.keys(ch).forEach(function(k){
+      var v = ch[k], bar = k.indexOf('|');
+      if (bar > 0) {
+        var l = k.slice(0, bar), id = k.slice(bar + 1);
+        if (!Array.isArray(r[l])) r[l] = [];
+        var i = r[l].findIndex(function(x){ return x && x.id === id; });
+        if (v === null) { if (i >= 0) r[l].splice(i, 1); }
+        else if (i >= 0) r[l][i] = v; else r[l].push(v);
+      } else if (k.indexOf('salaries.') === 0) {
+        if (!r.salaries || typeof r.salaries !== 'object') r.salaries = {};
+        if (v === null) delete r.salaries[k.slice(9)]; else r.salaries[k.slice(9)] = v;
+      } else {
+        if (v === null) delete r[k]; else r[k] = v;
+      }
+    });
+    // le ricorrenti messe da due dispositivi nello stesso mese: se ne tiene una sola
+    var visti = {};
+    r.items = (r.items || []).filter(function(i){
+      var c = i.rm ? 'm|' + i.rm + '|' + i.m : (i.r ? 's|' + i.r + '|' + i.m + '|' + i.day : null);
+      if (!c) return true;
+      if (visti[c]) return false;
+      visti[c] = 1; return true;
+    });
+    return r;
+  }
+  function haModifiche(){ return Object.keys(differenze(base, state)).length > 0; }
+
+  function chiaveLocale(){ return sessione ? 'spese_copia_telefono_' + sessione.uid : null; }
+  function salvaSulTelefono(){
+    var c = chiaveLocale(); if (!c) return;
+    try { localStorage.setItem(c, JSON.stringify({ state: state, base: base, quando: Date.now() })); } catch(e) {}
+  }
+  function leggiDalTelefono(){
+    var c = chiaveLocale(); if (!c) return null;
+    try { var x = JSON.parse(localStorage.getItem(c) || 'null'); if (x && x.state && Array.isArray(x.state.items)) return x; } catch(e) {}
+    return null;
+  }
+
+  var pubTimer = null, riprovaTimer = null;
   var pendingSave = false;
   function schedule(){
+    salvaSulTelefono();
     pendingSave = true;
-    saveState = 'pending';
+    if (saveState !== 'error') saveState = 'pending';
     clearTimeout(pubTimer);
     pubTimer = setTimeout(flush, 1400);
   }
-  function flush(){
+  function riprovaTraPoco(){
+    clearTimeout(riprovaTimer);
+    riprovaTimer = setTimeout(function(){ if (pendingSave || haModifiche()) flush(); }, 15000);
+  }
+  function leggiServer(){
+    return fsFetch(DOC_PATH, {}, 12000).then(function(doc){
+      var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
+      if (!raw) return { dati: null, versione: doc && doc.updateTime || null };
+      var p = JSON.parse(raw);
+      if (!p || typeof p !== 'object' || !Array.isArray(p.items)) throw new Error('formato');
+      return { dati: normalizza(p), versione: doc.updateTime || null };
+    }, function(err){
+      if (err && err.code === 'not-found') return { dati: null, versione: null };
+      throw err;
+    });
+  }
+  function flush(tentativo){
     clearTimeout(pubTimer);
     pubTimer = null;
     if (!sessione) return;
     if (editing || debtEditing || guida || recEditing || migrazioneInSospeso) { pubTimer = setTimeout(flush, 1400); return; }
-    if(!pendingSave) return;
+    if (salvataggioInCorso) { pendingSave = true; return; }
+    if (!loaded) return; // prima bisogna aver letto il server almeno una volta
     pendingSave = false;
-    var payload = { fields: { json: { stringValue: JSON.stringify(state) } } };
-    fsFetch(DOC_PATH + '?updateMask.fieldPaths=json', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }, 12000).then(function(){
-      saveState = 'idle';
-      render();
-    }).catch(function(){
+    var fotografia = copiaStato(state);
+    var ch = differenze(base, fotografia);
+    if (!Object.keys(ch).length) { if (saveState !== 'idle') { saveState = 'idle'; render(); } return; }
+    salvataggioInCorso = true;
+    var percorso = DOC_PATH;
+    leggiServer().then(function(srv){
+      var unito = applica(srv.dati || statoVuoto(), ch);
+      var cond = srv.versione ? '&currentDocument.updateTime=' + encodeURIComponent(srv.versione) : '&currentDocument.exists=false';
+      return fsFetch(percorso + '?updateMask.fieldPaths=json' + cond, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { json: { stringValue: JSON.stringify(unito) } } })
+      }, 12000).then(function(){
+        salvataggioInCorso = false;
+        if (percorso !== DOC_PATH) return; // nel frattempo è cambiato account
+        base = unito;
+        var dopo = applica(unito, differenze(fotografia, state));
+        var cambiato = JSON.stringify(dopo) !== JSON.stringify(state);
+        state = dopo;
+        salvaSulTelefono();
+        if (haModifiche()) { schedule(); return; }
+        saveState = 'idle';
+        if (cambiato) applicaInizio();
+        if (!editing && !debtEditing && !recEditing) render();
+      });
+    }).catch(function(err){
+      salvataggioInCorso = false;
+      if (err && err.code === 'conflitto' && (tentativo || 0) < 3) { flush((tentativo || 0) + 1); return; }
       saveState = 'error';
       pendingSave = true;
-      render();
+      if (!editing && !debtEditing && !recEditing) render();
+      riprovaTraPoco();
     });
   }
 
   function caricaRemoto(){
-    if(!sessione) return;
-    fsFetch(DOC_PATH, {}, 12000).then(function(doc){
-      var raw = doc && doc.fields && doc.fields.json && doc.fields.json.stringValue;
-      if(raw){
-        try{
-          var parsed = JSON.parse(raw);
-          if(parsed && typeof parsed === 'object' && Array.isArray(parsed.items)){
-            if (!Array.isArray(parsed.debts)) parsed.debts = [];
-            if (!parsed.salaries || typeof parsed.salaries !== 'object') parsed.salaries = {};
-            if (!Array.isArray(parsed.weekly)) parsed.weekly = [];
-            if (!Array.isArray(parsed.monthly)) parsed.monthly = [];
-            if (!inizioValido(parsed.startDay)) parsed.startDay = 11;
-            state = parsed;
-            applicaInizio();
-            controllaGuida();
-            render();
-          }
-        }catch(e){ /* ignore */ }
-      }
-    }).catch(function(err){
-      if(err && err.code === 'not-found'){
+    if(!sessione || salvataggioInCorso) return;
+    var percorso = DOC_PATH;
+    leggiServer().then(function(srv){
+      if (salvataggioInCorso || percorso !== DOC_PATH) return;
+      var primaVolta = !loaded;
+      if (!srv.dati) {
         // account nuovo, ancora senza spese: parte vuoto. Solo con ?importa=1 si portano qui i vecchi dati del proprietario
+        loaded = true;
         if(VUOLE_IMPORTARE && !importTentato) importaVecchi();
-        else if (state.items.length === 0 && !inizioValido(state.startDay)) { state.startDay = 1; applicaInizio(); controllaGuida(); render(); }
-        else { controllaGuida(); if (guida) render(); }
+        else if (state.items.length === 0 && !inizioValido(state.startDay)) { state.startDay = 1; applicaInizio(); controllaGuida(); render(); schedule(); }
+        else { controllaGuida(); render(); if (haModifiche()) schedule(); }
         return;
       }
+      var mie = differenze(base, state); // cambiamenti fatti qui e non ancora salvati
+      loaded = true;
+      base = srv.dati;
+      var nuovo = applica(base, mie);
+      var cambiato = JSON.stringify(nuovo) !== JSON.stringify(state);
+      state = nuovo;
+      salvaSulTelefono();
+      if (cambiato || primaVolta) { applicaInizio(); controllaGuida(); render(); }
+      if (Object.keys(mie).length) schedule();
+      else if (saveState === 'error') { saveState = 'idle'; render(); }
+    }).catch(function(){
       if (sessione && saveState === 'idle') { saveState = 'error'; render(); }
+      riprovaTraPoco();
     });
   }
+  window.addEventListener('online', function(){ if (pendingSave || haModifiche()) flush(); else caricaRemoto(); });
+  window.speseNonSalvate = function(){ return !!(sessione && (salvataggioInCorso || haModifiche())); };
 
   function togliFlagImporta(){
     VUOLE_IMPORTARE = false;
@@ -760,10 +885,10 @@ button:disabled{opacity:.6;cursor:default}
       avvisa('Importate ' + po.items.length + (po.items.length === 1 ? ' voce' : ' voci') + ' e ' + po.debts.length + (po.debts.length === 1 ? ' debito' : ' debiti') + ' nel tuo account ✓');
     }).catch(function(err){
       var c = err && err.code;
-      if(c === 'not-found' || c === 'formato' || err instanceof SyntaxError){
+      if(c === 'not-found' || c === 'formato' || c === 'permission-denied' || err instanceof SyntaxError){
         migrazioneInSospeso = false;
         togliFlagImporta();
-        avvisa(c === 'not-found' ? 'Non ho trovato vecchi dati da importare.' : 'I vecchi dati non si riescono a leggere.');
+        avvisa(c === 'formato' || err instanceof SyntaxError ? 'I vecchi dati non si riescono a leggere.' : 'Non ho trovato vecchi dati da importare.');
         return;
       }
       importTentato = false; // si riprova al prossimo giro
@@ -829,7 +954,9 @@ button:disabled{opacity:.6;cursor:default}
     authPost(authMode === 'iscriviti' ? 'signUp' : 'signInWithPassword', { email: email, password: pw, returnSecureToken: true }).then(function(j){
       salvaSessione(sessioneDa(j, email));
       authBusy = false; authMsg = null; authEmail = '';
-      state = statoVuoto();
+      state = statoVuoto(); base = copiaStato(state); loaded = false; pendingSave = false;
+      var locA = leggiDalTelefono();
+      if (locA) { state = normalizza(locA.state); base = locA.base ? locA.base : copiaStato(state); }
       applicaInizio();
       view = 'month'; saveState = 'idle'; importTentato = false;
       render();
@@ -919,6 +1046,7 @@ button:disabled{opacity:.6;cursor:default}
         throw err;
       });
     }).then(function(){
+      try { localStorage.removeItem(chiaveLocale()); } catch(e) {}
       return authPost('delete', { idToken: sessione.idToken });
     }).then(function(){
       esciSubito();
@@ -1204,11 +1332,14 @@ button:disabled{opacity:.6;cursor:default}
   var pollTimer = null;
   function initStorage(){
     salvaSessione(leggiSessione());
+    var loc = leggiDalTelefono();
+    if (loc) { state = normalizza(loc.state); base = loc.base ? loc.base : copiaStato(state); applicaInizio(); }
     render();
     if (sessione) caricaRemoto();
     pollTimer = setInterval(function(){
       if (!sessione) return;
-      if ((pendingSave || saveState === 'pending') && !migrazioneInSospeso) return;
+      if (salvataggioInCorso) return;
+      if (pendingSave && saveState !== 'error' && !migrazioneInSospeso) return;
       if (editing || debtEditing || guida || recEditing) return;
       caricaRemoto();
     }, 6000);
@@ -1471,9 +1602,12 @@ button:disabled{opacity:.6;cursor:default}
           if(!m || m[1] === mia) return;
           if(occupato()) return;
           var chiave = 'agg_' + m[1];
-          try{ if(sessionStorage.getItem(chiave)) return; sessionStorage.setItem(chiave, '1'); }catch(e){}
+          try{ if(sessionStorage.getItem(chiave)) return; }catch(e){}
           try{ window.dispatchEvent(new Event('pagehide')); }catch(e){}
-          setTimeout(function(){ location.replace(location.pathname + '?v=' + encodeURIComponent(m[1])); }, 500);
+          // prima finisco di salvare: se ci sono spese non ancora sul server, rimando la ricarica
+          if(window.speseNonSalvate && window.speseNonSalvate()) return;
+          try{ sessionStorage.setItem(chiave, '1'); }catch(e){}
+          location.replace(location.pathname + '?v=' + encodeURIComponent(m[1]));
         })
         .catch(function(){ inCorso = false; });
     }
