@@ -917,6 +917,14 @@ button:disabled{opacity:.6;cursor:default}
     });
     return h + '</section>';
   }
+  function scaricaDati(){
+    var oggi = new Date();
+    var nome = 'spese-mensili-' + oggi.getFullYear() + '-' + due(oggi.getMonth() + 1) + '-' + due(oggi.getDate()) + '.json';
+    var blob = new Blob([JSON.stringify({ app: 'Spese mensili', account: sessione && sessione.email, salvato: oggi.toISOString(), dati: state }, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
   function ripristinaCopia(i){
     var c = copieLista && copieLista[i];
     if (!c) return;
@@ -1062,6 +1070,7 @@ button:disabled{opacity:.6;cursor:default}
       ['auto|Automatico', 'light|Chiaro', 'dark|Scuro'].map(function(x){ var q = x.split('|'); return '<label class="seg"><input type="radio" name="tema" value="' + q[0] + '"' + (tma === q[0] ? ' checked' : '') + '><span>' + q[1] + '</span></label>'; }).join('') +
       '</div></fieldset><p class="note">Automatico segue il tema del telefono. La scelta vale solo su questo dispositivo.</p></form></section>';
     h += htmlCopie();
+    h += '<section class="sect"><h2>Scarica i tuoi dati</h2><p class="sub" style="margin:0 0 8px">Un file con tutte le tue spese, debiti, stipendi e spese ricorrenti, da tenere dove vuoi (per esempio in File o su iCloud).</p><button class="btn wide" data-act="scarica-dati">Scarica il file</button></section>';
     h += '<section class="sect"><h2>Guida iniziale</h2><p class="sub" style="margin:0 0 8px">Rifai i passaggi per scegliere l\'inizio del mese e le spese fisse.</p><button class="btn wide" data-act="g-riapri">Apri la guida</button></section>';
     h += '<section class="sect"><h2>Cambia password</h2><form class="form" data-cambia novalidate>' +
       '<label>Password attuale<span class="pw-box"><input type=\"password\" name=\"vecchia\" autocomplete=\"current-password\"><button type="button" class="occhio" data-occhio aria-label="Mostra la password"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></span></label>' +
@@ -1479,6 +1488,7 @@ button:disabled{opacity:.6;cursor:default}
     if (act === 'set-back') { view = 'month'; setMsg = null; armedElimina = false; render(); return; }
     if (act === 'set-link') { mandaLink(); return; }
     if (act === 'copie-carica') { caricaCopie(); return; }
+    if (act === 'scarica-dati') { scaricaDati(); return; }
     if (act === 'copia-ripristina') { ripristinaCopia(+t.getAttribute('data-i')); return; }
     if (act === 'set-esci') { esciSubito(); return; }
     if (act === 'set-elimina') { armedElimina = true; setMsg = null; render(); return; }
